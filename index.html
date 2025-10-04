@@ -1670,6 +1670,11 @@ const firebaseConfig = {
   appId: "1:42803696035:web:da8b7d61c227fdc44c0a16"
 };
 
+// Debug Firebase configuration
+console.log('Firebase Config:', firebaseConfig);
+console.log('Current URL:', window.location.href);
+console.log('Is HTTPS:', window.location.protocol === 'https:');
+
 let db = null;
 let firebaseAvailable = false;
 
@@ -1699,9 +1704,11 @@ function initializeFirebase() {
         clearTimeout(timeout);
         firebaseAvailable = true;
         console.log('Firebase initialized and connected successfully');
+        console.log('Firebase URL:', db.app.options.databaseURL);
         resolve(true);
       }).catch(error => {
         console.warn('Firebase connection failed:', error);
+        console.warn('Error details:', error.message, error.code);
         clearTimeout(timeout);
         firebaseAvailable = false;
         resolve(false);
