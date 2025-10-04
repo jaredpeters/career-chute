@@ -1618,6 +1618,38 @@ progress::-webkit-progress-value {
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
+// Emergency functions available immediately
+window.emergencyOffline = function() {
+  console.log('Emergency offline mode triggered');
+  // Force update sync status
+  const syncText = document.getElementById('syncText');
+  if (syncText) syncText.textContent = 'Offline';
+  
+  // Load from localStorage
+  try {
+    const saved = localStorage.getItem('career_chute_backup');
+    if (saved) {
+      state = JSON.parse(saved);
+      renderTodayTasks();
+      renderSettings();
+      alert('Emergency offline mode activated!');
+    } else {
+      alert('No local data found. Starting fresh.');
+    }
+  } catch (error) {
+    console.error('Emergency load error:', error);
+    alert('Emergency mode failed. Please refresh the page.');
+  }
+};
+
+// Auto-trigger emergency mode after 3 seconds
+setTimeout(() => {
+  const syncText = document.getElementById('syncText');
+  if (syncText && syncText.textContent === 'Loading...') {
+    console.warn('Auto-emergency mode triggered');
+    window.emergencyOffline();
+  }
+}, 3000);
 
 // Firebase initialization
 const firebaseConfig = {
