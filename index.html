@@ -4942,14 +4942,43 @@ function syncToUserId() {
       theme: 'dark'
     };
     
-    // Load data from new User ID
-    loadFromFirebase();
-    
-    // Update UI
+    // Update UI immediately
     renderSettings();
     document.getElementById('syncUserIdInput').value = '';
     
-    alert('Switched to new User ID! Loading data...');
+    // Load data from new User ID
+    if (firebaseAvailable && db) {
+      updateSyncStatus('syncing', 'Loading data...');
+      db.collection('users').doc(userId).get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          if (data.lastUpdated) {
+            state = { ...state, ...data };
+            delete state.lastUpdated;
+            
+            // Re-render everything
+            renderTodayTasks();
+            renderPlanScreen();
+            renderSettings();
+            
+            updateSyncStatus('synced', 'Synced');
+            setTimeout(() => updateSyncStatus('', 'Cloud'), 2000);
+            
+            alert('Successfully synced with other device!');
+          } else {
+            alert('No data found for this User ID');
+          }
+        } else {
+          alert('No data found for this User ID');
+        }
+      }).catch(error => {
+        console.error('Sync error:', error);
+        updateSyncStatus('error', 'Error');
+        alert('Failed to load data from other device');
+      });
+    } else {
+      alert('Firebase not available - cannot sync data');
+    }
   }
 }
 
