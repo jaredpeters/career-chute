@@ -1,0 +1,2843 @@
+v 70
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Career Chute 2.0</title>
+<style>
+:root {
+  --bg: #0e0f11;
+  --panel: #15171a;
+  --text: #e9ecef;
+  --muted: #9aa3ab;
+  --accent: #5ad0ff;
+  --ok: #79dd94;
+  --warn: #ffbe5a;
+  --bad: #ff6b6b;
+  --line: #23262b;
+  --success-glow: rgba(121, 221, 148, 0.4);
+}
+
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px var(--success-glow); }
+  50% { box-shadow: 0 0 40px var(--success-glow), 0 0 60px var(--success-glow); }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  animation: confetti 3s ease-out forwards;
+  z-index: 9999;
+}
+
+.celebration-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 9998;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.celebration-overlay.active {
+  display: flex;
+  animation: slideIn 0.3s ease-out;
+}
+
+.breathing-circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--ok));
+  animation: breathe 19s ease-in-out infinite;
+}
+
+.breathing-text {
+  position: absolute;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 200px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Full-width card style (restaurant POS) */
+.task-card {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 12px 0;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 80px;
+}
+
+.task-card:hover {
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+
+.task-card.urgent { border-left: 4px solid var(--bad); }
+.task-card.soon { border-left: 4px solid var(--warn); }
+.task-card.ok { border-left: 4px solid var(--ok); }
+
+.screen {
+  display: none;
+  min-height: 100vh;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.screen.active { display: block; }
+
+/* Focus Mode */
+#focusMode {
+  background: var(--bg);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.focus-timer {
+  font-size: 72px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 20px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-content {
+  max-width: 600px;
+  text-align: center;
+  background: var(--panel);
+  padding: 40px;
+  border-radius: 20px;
+  border: 2px solid var(--line);
+}
+
+.focus-title {
+  font-size: 28px;
+  margin-bottom: 20px;
+  color: var(--accent);
+}
+
+.focus-description {
+  font-size: 18px;
+  margin-bottom: 30px;
+  line-height: 1.8;
+}
+
+.completion-criteria {
+  background: rgba(90, 208, 255, 0.1);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.completion-criteria h4 {
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+button {
+  background: var(--accent);
+  color: #001018;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(90, 208, 255, 0.3);
+}
+
+button.secondary {
+  background: #2b2f35;
+  color: var(--text);
+}
+
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.btn-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.next-task-options {
+  display: grid;
+  gap: 16px;
+  margin-top: 30px;
+  max-width: 500px;
+}
+
+.next-task-options button {
+  width: 100%;
+  padding: 20px;
+  font-size: 18px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header {
+  background: var(--panel);
+  border-bottom: 2px solid var(--line);
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+}
+
+.header h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.header .subtitle {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+input, select, textarea {
+  width: 100%;
+  background: #0f1114;
+  border: 1px solid #2b2f35;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 16px;
+  font-family: inherit;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+label {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 10px 0;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+progress::-webkit-progress-bar {
+  background: #2b2f35;
+  border-radius: 4px;
+}
+
+progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+.nav-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-top: 2px solid var(--line);
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+  z-index: 100;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 24px;
+  padding: 8px 20px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: auto;
+}
+
+.nav-btn span {
+  font-size: 11px;
+}
+
+.nav-btn.active {
+  color: var(--accent);
+}
+
+.ritual-screen {
+  text-align: center;
+  padding-top: 60px;
+}
+
+.ritual-emoji {
+  font-size: 80px;
+  margin: 20px 0;
+}
+
+.ritual-title {
+  font-size: 32px;
+  margin-bottom: 20px;
+}
+
+.ritual-message {
+  font-size: 18px;
+  color: var(--muted);
+  margin-bottom: 40px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: var(--panel);
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 2px solid var(--line);
+}
+
+.modal h2 {
+  margin-bottom: 20px;
+}
+
+.exit-focus {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  padding: 8px 16px;
+  min-width: auto;
+  z-index: 1001;
+}
+
+@media (max-width: 768px) {
+  .screen {
+    padding: 16px;
+    padding-bottom: 80px;
+  }
+  
+  .focus-timer {
+    font-size: 56px;
+  }
+  
+  .focus-title {
+    font-size: 24px;
+  }
+  
+  .task-card {
+    padding: 16px;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty-state-emoji {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.list-item {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.list-item-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.list-item-meta {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.badge.queued { background: #2b2f35; color: var(--muted); }
+.badge.tailoring { background: rgba(255, 190, 90, 0.2); color: var(--warn); }
+.badge.ready { background: rgba(121, 221, 148, 0.2); color: var(--ok); }
+.badge.sent { background: rgba(90, 208, 255, 0.2); color: var(--accent); }
+
+.icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- Main Screens -->
+<div id="standup" class="screen ritual-screen active">
+  <div class="ritual-emoji">☕</div>
+  <div class="ritual-title">Good morning!</div>
+  <div class="ritual-message">Let's make today count. Ready to tackle your goals?</div>
+  
+  <!-- Streak Display -->
+  <div id="streakDisplay" style="margin: 20px auto; padding: 16px; background: linear-gradient(135deg, rgba(255, 190, 90, 0.2), rgba(255, 107, 107, 0.2)); border-radius: 12px; max-width: 300px;">
+    <div style="font-size: 40px; margin-bottom: 8px;">🔥</div>
+    <div style="font-size: 32px; font-weight: 700;" id="streakCount">0</div>
+    <div style="font-size: 14px; color: var(--muted);">day streak</div>
+  </div>
+  
+  <div class="stats-grid" style="max-width: 600px; margin: 40px auto;">
+    <div class="stat-card">
+      <div class="stat-label">Today's Quota</div>
+      <div class="stat-value" id="todayQuota">3</div>
+      <div class="stat-label">applications</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">This Week</div>
+      <div class="stat-value"><span id="weekProgress">4</span>/<span id="weekTarget">15</span></div>
+      <progress id="weekProgressBar" value="4" max="15"></progress>
+    </div>
+  </div>
+  
+  <button onclick="goToToday()">Start My Day →</button>
+</div>
+
+<div id="today" class="screen active">
+  <!-- Top Stats Bar -->
+  <div style="position: sticky; top: 0; background: var(--bg); z-index: 10; padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <h1 style="margin: 0; font-size: 24px;">Today's Queue</h1>
+    <div style="display: flex; gap: 16px; align-items: center;">
+      <div style="text-align: center;">
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">Apps</div>
+        <div style="font-size: 18px; font-weight: 700;">
+          <span id="todayAppsComplete" style="color: var(--bad);">0</span><span style="color: var(--text);">/</span><span id="todayAppsTarget">3</span>
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">Network</div>
+        <div style="font-size: 18px; font-weight: 700;">
+          <span id="todayNetComplete" style="color: var(--bad);">0</span><span style="color: var(--text);">/</span><span id="todayNetTarget">2</span>
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 2px;">Time</div>
+        <div style="font-size: 18px; font-weight: 700;" id="todayTimeTotal">0m</div>
+      </div>
+      <div style="text-align: center; padding-left: 8px; border-left: 1px solid var(--line);">
+        <div style="font-size: 20px;">🔥</div>
+        <div style="font-size: 14px; font-weight: 700;" id="todayStreak">0</div>
+      </div>
+    </div>
+  </div>
+  
+  <div style="padding: 20px;">
+    <div id="todayTasks" style="margin-bottom: 120px;">
+      <!-- Tasks will be populated here -->
+    </div>
+  </div>
+  
+  <!-- Sticky Add Button -->
+  <button onclick="showAddTaskModal()" class="secondary" style="position: fixed; bottom: 80px; left: 20px; right: 20px; max-width: 1160px; margin: 0 auto; z-index: 50; box-shadow: 0 -2px 10px rgba(0,0,0,0.3);">+ Add Task for Today</button>
+</div>
+
+<div id="plan" class="screen">
+  <div class="header">
+    <h1>Weekly Plan</h1>
+    <div class="subtitle">Manage your pipeline</div>
+  </div>
+  
+  <div style="margin-bottom: 30px;">
+    <h3 style="margin-bottom: 16px;">📊 This Week's Targets</h3>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Applications</div>
+        <div class="stat-value"><span id="planAppsProgress">0</span>/<span id="planAppsTarget">15</span></div>
+        <progress id="planAppsBar" value="0" max="15"></progress>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Networking</div>
+        <div class="stat-value"><span id="planNetProgress">0</span>/<span id="planNetTarget">10</span></div>
+        <progress id="planNetBar" value="0" max="10"></progress>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Events</div>
+        <div class="stat-value"><span id="planEventsProgress">0</span>/<span id="planEventsTarget">1</span></div>
+      </div>
+    </div>
+  </div>
+  
+  <div style="margin-bottom: 30px;">
+    <h3 style="margin-bottom: 16px;">💼 Applications Pipeline</h3>
+    <button onclick="showAddAppModal()" class="secondary" style="width: 100%; margin-bottom: 16px;">+ Add New Application</button>
+    <div id="appsList"></div>
+  </div>
+  
+  <div style="margin-bottom: 30px;">
+    <h3 style="margin-bottom: 16px;">🤝 Networking Queue</h3>
+    <button onclick="showAddContactModal()" class="secondary" style="width: 100%; margin-bottom: 16px;">+ Add Contact</button>
+    <div id="contactsList"></div>
+  </div>
+  
+  <div style="margin-bottom: 100px;">
+    <h3 style="margin-bottom: 16px;">📅 Upcoming Events</h3>
+    <button onclick="showAddEventModal()" class="secondary" style="width: 100%; margin-bottom: 16px;">+ Add Event</button>
+    <div id="eventsList"></div>
+  </div>
+</div>
+
+<div id="settings" class="screen">
+  <div class="header">
+    <h1>Settings</h1>
+    <div class="subtitle">Customize your goals</div>
+  </div>
+  
+  <div class="form-group">
+    <label>Weekly Application Target</label>
+    <input type="number" id="targetApps" min="1" value="15">
+  </div>
+  
+  <div class="form-group">
+    <label>Weekly Networking Target</label>
+    <input type="number" id="targetNet" min="1" value="10">
+  </div>
+  
+  <div class="form-group">
+    <label>Weekly Events Target</label>
+    <input type="number" id="targetEvents" min="1" value="1">
+  </div>
+  
+  <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--line);">
+    <h3 style="margin-bottom: 16px;">🛡️ Guardrails</h3>
+    <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Keep you on track and prevent optimization paralysis</p>
+    
+    <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+      <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
+        <span style="font-size: 16px; color: var(--text);">Enable Guardrails</span>
+        <input type="checkbox" id="guardrailsEnabled" onchange="toggleGuardrails()" style="width: auto; height: 24px; cursor: pointer;">
+      </label>
+    </div>
+    
+    <div id="guardrailsSettings" style="display: none; margin-left: 20px;">
+      <div class="form-group">
+        <label>Max time on resume tailoring (minutes per session)</label>
+        <input type="number" id="maxTailorTime" min="15" max="120" value="40">
+      </div>
+      
+      <div class="form-group">
+        <label>Max daily time on optimization tasks (minutes total)</label>
+        <input type="number" id="maxOptimizationTime" min="30" max="180" value="60">
+        <small style="display: block; margin-top: 4px;">Includes: resume work, LLM chats, strategy planning</small>
+      </div>
+      
+      <div class="form-group">
+        <label>Time warning threshold (minutes)</label>
+        <input type="number" id="warningThreshold" min="10" max="60" value="30">
+        <small style="display: block; margin-top: 4px;">Get a gentle nudge after this many minutes on one task</small>
+      </div>
+    </div>
+  </div>
+  
+  <button onclick="saveSettings()">Save Settings</button>
+  
+  <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line); margin-bottom: 100px;">
+    <h3 style="margin-bottom: 16px;">🔄 Data Management</h3>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <button onclick="exportData()" class="secondary">Export Data</button>
+      <button onclick="importData()" class="secondary">Import Data</button>
+    </div>
+    <p style="color: var(--muted); font-size: 14px; margin-top: 12px;">⚠️ Firebase sync coming in Phase 2</p>
+  </div>
+</div>
+
+<div id="progress" class="screen">
+  <div class="header">
+    <h1>Progress</h1>
+    <div class="subtitle">Track your job search journey</div>
+  </div>
+  
+  <!-- Current Focus -->
+  <div style="background: linear-gradient(135deg, rgba(90, 208, 255, 0.1), rgba(121, 221, 148, 0.1)); border: 2px solid var(--accent); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+    <h3 style="margin-bottom: 12px;">🎯 Current Focus</h3>
+    <div id="progressFocusDisplay" style="font-size: 18px; font-weight: 600; margin-bottom: 12px;"></div>
+    <button onclick="editFocus()" class="ghost" style="font-size: 14px; padding: 8px 16px;">Edit Focus</button>
+  </div>
+  
+  <!-- Week Overview -->
+  <div class="card" style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 16px;">📅 This Week</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span style="color: var(--muted);">Week Progress</span>
+      <span style="font-weight: 600;" id="progressWeekDay">Day 1 of 7</span>
+    </div>
+    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+      <div id="progressWeekDots"></div>
+    </div>
+    
+    <!-- Streak Display -->
+    <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(255, 190, 90, 0.2), rgba(255, 107, 107, 0.2)); border-radius: 12px; margin-bottom: 20px;">
+      <div style="font-size: 48px; margin-bottom: 8px;">🔥</div>
+      <div style="font-size: 36px; font-weight: 700; margin-bottom: 4px;" id="progressStreakCount">0</div>
+      <div style="font-size: 14px; color: var(--muted);">day streak</div>
+      <div style="font-size: 12px; color: var(--muted); margin-top: 8px;">Best: <span id="progressStreakBest">0</span> days</div>
+    </div>
+    
+    <div style="display: grid; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Applications</span>
+        <span class="kpi" id="progressAppsStatus">0/15</span>
+      </div>
+      <progress id="progressAppsBar" value="0" max="15"></progress>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Networking</span>
+        <span class="kpi" id="progressNetStatus">0/10</span>
+      </div>
+      <progress id="progressNetBar" value="0" max="10"></progress>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Events</span>
+        <span class="kpi" id="progressEventsStatus">0/1</span>
+      </div>
+      <progress id="progressEventsBar" value="0" max="1"></progress>
+    </div>
+    
+    <div id="progressOnTrack" style="margin-top: 20px; padding: 16px; border-radius: 12px; text-align: center; font-weight: 600;"></div>
+  </div>
+  
+  <!-- Time This Week -->
+  <div class="card" style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 16px;">⏱️ Time This Week</h3>
+    <div style="display: grid; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Optimization Work</span>
+        <span class="kpi" id="progressWeekOptTime">0 min</span>
+      </div>
+      <div style="font-size: 12px; color: var(--muted);">Resume tweaking, strategy</div>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+        <span>Execution Work</span>
+        <span class="kpi" id="progressWeekExecTime">0 min</span>
+      </div>
+      <div style="font-size: 12px; color: var(--muted);">Applications, networking, events</div>
+    </div>
+  </div>
+  
+  <!-- Application History -->
+  <div class="card" style="margin-bottom: 100px;">
+    <h3 style="margin-bottom: 16px;">💼 Application History</h3>
+    <div id="applicationHistory"></div>
+  </div>
+</div>
+  <div class="header">
+    <h1>Mission Control</h1>
+    <div class="subtitle">Stay oriented on your job search</div>
+  </div>
+  
+  <!-- Current Focus -->
+  <div style="background: linear-gradient(135deg, rgba(90, 208, 255, 0.1), rgba(121, 221, 148, 0.1)); border: 2px solid var(--accent); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+    <h3 style="margin-bottom: 12px;">🎯 Current Focus</h3>
+    <div id="currentFocusDisplay" style="font-size: 18px; font-weight: 600; margin-bottom: 12px;"></div>
+    <button onclick="editFocus()" class="ghost" style="font-size: 14px; padding: 8px 16px;">Edit Focus</button>
+  </div>
+  
+  <!-- Week Overview -->
+  <div class="card" style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 16px;">📅 Week Overview</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <span style="color: var(--muted);">Week Progress</span>
+      <span style="font-weight: 600;" id="weekDayProgress">Day 1 of 7</span>
+    </div>
+    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+      <div id="weekDayDots"></div>
+    </div>
+    
+    <div style="display: grid; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Applications</span>
+        <span class="kpi" id="missionAppsStatus">4/15</span>
+      </div>
+      <progress id="missionAppsBar" value="4" max="15"></progress>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Networking</span>
+        <span class="kpi" id="missionNetStatus">2/10</span>
+      </div>
+      <progress id="missionNetBar" value="2" max="10"></progress>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Events</span>
+        <span class="kpi" id="missionEventsStatus">0/1</span>
+      </div>
+      <progress id="missionEventsBar" value="0" max="1"></progress>
+    </div>
+    
+    <div id="onTrackStatus" style="margin-top: 20px; padding: 16px; border-radius: 12px; text-align: center; font-weight: 600;"></div>
+  </div>
+  
+  <!-- Time Tracking (Today) -->
+  <div class="card" style="margin-bottom: 100px;" id="timeTrackingCard">
+    <h3 style="margin-bottom: 16px;">⏱️ Today's Time</h3>
+    <div style="display: grid; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Optimization Work</span>
+        <span class="kpi" id="todayOptTime">0 min</span>
+      </div>
+      <progress id="todayOptBar" value="0" max="60"></progress>
+      <div style="font-size: 12px; color: var(--muted);">Resume tweaking, strategy sessions</div>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+        <span>Execution Work</span>
+        <span class="kpi" id="todayExecTime">0 min</span>
+      </div>
+      <div style="font-size: 12px; color: var(--muted);">Applications, networking, events</div>
+    </div>
+  </div>
+</div>
+
+<!-- Focus Mode (hidden by default) -->
+<div id="focusMode" style="display: none;">
+  <button class="exit-focus" onclick="exitFocus()">← Back to Queue</button>
+  
+  <div class="focus-content">
+    <div class="focus-timer" id="focusTimer">00:00</div>
+    
+    <!-- Progress bar for optimization tasks -->
+    <div id="optimizationProgress" style="display: none; margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
+        <span>Today's optimization time</span>
+        <span id="optProgressText">0/60 min</span>
+      </div>
+      <progress id="optProgressBar" value="0" max="60" style="width: 100%;"></progress>
+    </div>
+    
+    <div class="focus-title" id="focusTitle"></div>
+    <div class="focus-description" id="focusDescription"></div>
+    
+    <div class="completion-criteria">
+      <h4>✓ Completion Criteria:</h4>
+      <p id="focusCriteria"></p>
+    </div>
+    
+    <div class="btn-group">
+      <button onclick="pauseTask()" id="pauseBtn">⏸️ Pause</button>
+      <button onclick="switchTask()" class="secondary" id="switchBtn">🔄 Switch Task</button>
+      <button onclick="completeTask()" id="completeBtn">✓ Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Next Task Selection (shown after completing a task) -->
+<div id="nextTaskModal" class="modal-overlay">
+  <div class="modal">
+    <h2>✨ Nice work! What's next?</h2>
+    <div class="next-task-options">
+      <button onclick="nextTaskRecommended()">
+        <span>⭐</span>
+        <span id="recommendedTaskText">Recommended task</span>
+      </button>
+      <button onclick="nextTaskRandom()" class="secondary">
+        <span>🎲</span>
+        <span>Choose for me</span>
+      </button>
+      <button onclick="nextTaskManual()" class="ghost">
+        <span>📋</span>
+        <span>Let me pick</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Breathing Break -->
+<div id="breathingBreak" class="celebration-overlay">
+  <div style="text-align: center;">
+    <div class="breathing-circle"></div>
+    <div class="breathing-text" id="breathingText">Breathe in...</div>
+    <button onclick="skipBreathing()" class="ghost" style="margin-top: 60px;">Skip →</button>
+  </div>
+</div>
+
+<!-- Celebration -->
+<div id="celebrationOverlay" class="celebration-overlay">
+  <div style="text-align: center; max-width: 400px;">
+    <div style="font-size: 80px; margin-bottom: 20px;" id="celebrationEmoji">🎉</div>
+    <h2 style="margin-bottom: 12px;" id="celebrationTitle">Great work!</h2>
+    <p style="color: var(--muted); margin-bottom: 30px;" id="celebrationMessage"></p>
+    <button onclick="closeCelebration()">Continue →</button>
+  </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="addTaskModal" class="modal-overlay">
+  <div class="modal">
+    <h2>Add Task for Today</h2>
+    <div class="form-group">
+      <label>Task Type</label>
+      <select id="newTaskType" onchange="updateTaskModalForType()">
+        <option value="application">Job Application</option>
+        <option value="networking">Networking Outreach</option>
+        <option value="tailoring">Tailor Resume</option>
+        <option value="event">Event/Activity</option>
+      </select>
+    </div>
+    
+    <div id="taskSelectSection">
+      <div class="form-group">
+        <label>Select existing item</label>
+        <select id="newTaskRef">
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+      <div style="text-align: center; color: var(--muted); margin: 12px 0;">or</div>
+    </div>
+    
+    <div id="quickAddSection" style="display: none;">
+      <!-- Quick add fields appear here based on task type -->
+    </div>
+    
+    <button onclick="toggleQuickAdd()" class="secondary" style="width: 100%; margin-bottom: 12px;" id="quickAddToggle">+ Quick Add New</button>
+    
+    <div class="btn-group">
+      <button onclick="addTaskToToday()">Add to Today</button>
+      <button onclick="closeModal('addTaskModal')" class="ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Application Modal -->
+<div id="addAppModal" class="modal-overlay">
+  <div class="modal">
+    <h2>Add New Application</h2>
+    <div class="form-group">
+      <label>Company Name</label>
+      <input type="text" id="newAppCompany" placeholder="Acme Corp">
+    </div>
+    <div class="form-group">
+      <label>Job Title</label>
+      <input type="text" id="newAppRole" placeholder="Product Manager">
+    </div>
+    <div class="form-group">
+      <label>Job URL</label>
+      <input type="url" id="newAppUrl" placeholder="https://...">
+    </div>
+    <div class="form-group">
+      <label>Deadline (optional)</label>
+      <input type="date" id="newAppDeadline">
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="newAppNotes" rows="3"></textarea>
+    </div>
+    <div class="btn-group">
+      <button onclick="addApplication()">Add Application</button>
+      <button onclick="closeModal('addAppModal')" class="ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div id="addContactModal" class="modal-overlay">
+  <div class="modal">
+    <h2>Add Networking Contact</h2>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" id="newContactName" placeholder="Walter Smith">
+    </div>
+    <div class="form-group">
+      <label>Relationship</label>
+      <select id="newContactRel">
+        <option value="friend">Friend/Ally</option>
+        <option value="contact">Professional Contact</option>
+        <option value="recruiter">Recruiter</option>
+        <option value="mentor">Mentor</option>
+        <option value="cold">Cold Contact</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Company (optional)</label>
+      <input type="text" id="newContactCompany">
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="newContactNotes" rows="3" placeholder="What to discuss, how they can help..."></textarea>
+    </div>
+    <div class="btn-group">
+      <button onclick="addContact()">Add Contact</button>
+      <button onclick="closeModal('addContactModal')" class="ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Event Modal -->
+<div id="addEventModal" class="modal-overlay">
+  <div class="modal">
+    <h2>Add Event</h2>
+    <div class="form-group">
+      <label>Event Name</label>
+      <input type="text" id="newEventName" placeholder="Career Fair">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="newEventDate">
+    </div>
+    <div class="form-group">
+      <label>Duration (minutes)</label>
+      <input type="number" id="newEventDuration" value="120">
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="newEventType">
+        <option value="fair">Career Fair</option>
+        <option value="workshop">Workshop</option>
+        <option value="info_session">Info Session</option>
+        <option value="networking">Networking Event</option>
+        <option value="interview">Interview</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="newEventNotes" rows="3"></textarea>
+    </div>
+    <div class="btn-group">
+      <button onclick="addEvent()">Add Event</button>
+      <button onclick="closeModal('addEventModal')" class="ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Focus Modal -->
+<div id="editFocusModal" class="modal-overlay">
+  <div class="modal">
+    <h2>Set Your Focus</h2>
+    <div class="form-group">
+      <label>What type of roles are you targeting?</label>
+      <textarea id="currentFocus" rows="3" placeholder="e.g., Product Manager roles at Series B startups in fintech"></textarea>
+      <small style="display: block; margin-top: 8px; color: var(--muted);">This will show at the top of Mission Control to keep you oriented</small>
+    </div>
+    <div class="btn-group">
+      <button onclick="saveFocus()">Save Focus</button>
+      <button onclick="closeModal('editFocusModal')" class="ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guardrail Warning Modal -->
+<div id="guardrailWarning" class="modal-overlay">
+  <div class="modal" style="text-align: center;">
+    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+    <h2 id="guardrailTitle" style="margin-bottom: 16px;"></h2>
+    <p id="guardrailMessage" style="color: var(--muted); margin-bottom: 24px;"></p>
+    <div class="btn-group">
+      <button onclick="closeModal('guardrailWarning')">Got it, moving on</button>
+      <button onclick="continueAnyway()" class="ghost">Continue anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="nav-bottom">
+  <button class="nav-btn active" onclick="showScreen('today')">
+    🎯
+    <span>Today</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('progress')">
+    📊
+    <span>Progress</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('plan')">
+    📋
+    <span>Plan</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('settings')">
+    ⚙️
+    <span>Settings</span>
+  </button>
+</div>
+
+<input type="file" id="importFileInput" accept=".json" style="display: none;">
+
+<script>
+// ==================== STATE MANAGEMENT ====================
+const STORAGE_KEY = 'career_chute_v2';
+
+let state = {
+  version: '2.0.0',
+  weekStart: null,
+  targets: {
+    apps: 15,
+    networking: 10,
+    events: 1
+  },
+  applications: [],
+  contacts: [],
+  events: [],
+  dailyTasks: {},
+  completedThisWeek: {
+    apps: 0,
+    networking: 0,
+    events: 0
+  },
+  currentTask: null,
+  focusStartTime: null,
+  // New features
+  guardrails: {
+    enabled: true,
+    maxTailorTime: 40,
+    maxOptimizationTime: 60,
+    warningThreshold: 30
+  },
+  missionControl: {
+    currentFocus: ''
+  },
+  dailyTimeTracking: {},
+  guardrailOverride: false,
+  taskProgress: {}, // Track accumulated time per task
+  streaks: {
+    current: 0,
+    longest: 0,
+    lastActiveDate: null
+  },
+  milestones: []
+};
+
+// Load state from localStorage
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const loaded = JSON.parse(saved);
+      state = { ...state, ...loaded };
+      
+      // Ensure new properties exist
+      if (!state.taskProgress) state.taskProgress = {};
+      if (!state.streaks) state.streaks = { current: 0, longest: 0, lastActiveDate: null };
+      if (!state.milestones) state.milestones = [];
+    }
+    
+    // Initialize week if needed
+    if (!state.weekStart || !isCurrentWeek(state.weekStart)) {
+      state.weekStart = getMonday();
+      state.completedThisWeek = { apps: 0, networking: 0, events: 0 };
+    }
+    
+    // Initialize today's tasks if needed
+    const today = getTodayISO();
+    if (!state.dailyTasks[today]) {
+      state.dailyTasks[today] = [];
+    }
+  } catch (err) {
+    console.error('Error loading state:', err);
+    throw err;
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    console.error('Error saving state:', err);
+  }
+}
+
+// ==================== DATE UTILITIES ====================
+function getTodayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getMonday() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  return monday.toISOString().split('T')[0];
+}
+
+function addDays(dateStr, days) {
+  const date = new Date(dateStr + 'T00:00:00');
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+}
+
+function isCurrentWeek(weekStart) {
+  const monday = getMonday();
+  return weekStart === monday;
+}
+
+function getDaysDifference(date1, date2) {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  const diff = Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+  return diff;
+}
+
+function formatDate(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ==================== NAVIGATION ====================
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  event?.target.closest('.nav-btn')?.classList.add('active');
+  
+  // Scroll to top when switching to Today
+  if (screenId === 'today') {
+    window.scrollTo(0, 0);
+    renderTodayTasks();
+  }
+  if (screenId === 'plan') renderPlanScreen();
+  if (screenId === 'progress') renderProgressScreen();
+  if (screenId === 'settings') renderSettings();
+}
+
+function goToToday() {
+  showScreen('today');
+}
+
+// ==================== STANDUP SCREEN ====================
+function renderStandup() {
+  const today = getTodayISO();
+  const todayTasks = state.dailyTasks[today] || [];
+  const incompleteTasks = todayTasks.filter(t => !t.completed);
+  
+  // Calculate daily quota
+  const daysLeft = 7 - getDaysDifference(today, state.weekStart);
+  const appsLeft = Math.max(0, state.targets.apps - state.completedThisWeek.apps);
+  const dailyQuota = Math.ceil(appsLeft / Math.max(1, daysLeft));
+  
+  document.getElementById('todayQuota').textContent = dailyQuota;
+  document.getElementById('weekProgress').textContent = state.completedThisWeek.apps;
+  document.getElementById('weekTarget').textContent = state.targets.apps;
+  document.getElementById('weekProgressBar').value = state.completedThisWeek.apps;
+  document.getElementById('weekProgressBar').max = state.targets.apps;
+  
+  // Update streak display
+  document.getElementById('streakCount').textContent = state.streaks.current || 0;
+  if (state.streaks.current === 0) {
+    document.getElementById('streakDisplay').style.display = 'none';
+  } else {
+    document.getElementById('streakDisplay').style.display = 'block';
+  }
+  
+  // Update greeting based on time
+  const hour = new Date().getHours();
+  let greeting = '☕ Good morning!';
+  if (hour >= 12 && hour < 17) greeting = '☀️ Good afternoon!';
+  if (hour >= 17) greeting = '🌙 Good evening!';
+  
+  document.querySelector('.ritual-title').textContent = greeting;
+}
+
+// ==================== TODAY'S TASKS ====================
+function renderTodayTasks() {
+  const today = getTodayISO();
+  const todayTasks = state.dailyTasks[today] || [];
+  const container = document.getElementById('todayTasks');
+  
+  if (todayTasks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-emoji">📭</div>
+        <p>No tasks queued for today</p>
+        <p style="font-size: 14px;">Add tasks to get started</p>
+      </div>
+    `;
+    updateTodayStats();
+    return;
+  }
+  
+  // Separate active and completed
+  const activeTasks = todayTasks.filter(t => !t.completed);
+  const completedTasks = todayTasks.filter(t => t.completed);
+  
+  // Sort active tasks: incomplete first, then by urgency
+  const sortedActive = [...activeTasks].sort((a, b) => {
+    const urgencyA = getTaskUrgency(a);
+    const urgencyB = getTaskUrgency(b);
+    const urgencyOrder = { urgent: 0, soon: 1, ok: 2 };
+    return urgencyOrder[urgencyA] - urgencyOrder[urgencyB];
+  });
+  
+  // Merge completed application tasks (tailoring + submission)
+  const mergedCompleted = mergeCompletedApplications(completedTasks);
+  
+  let html = '';
+  
+  // Active tasks - full cards
+  if (sortedActive.length > 0) {
+    html += sortedActive.map(task => renderTaskCard(task, false)).join('');
+  }
+  
+  // Completed tasks - slim cards
+  if (mergedCompleted.length > 0) {
+    html += '<div style="margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--line);"></div>';
+    html += mergedCompleted.map(item => {
+      if (item.merged) {
+        return renderMergedApplicationCard(item);
+      } else {
+        return renderTaskCard(item, true);
+      }
+    }).join('');
+  }
+  
+  container.innerHTML = html;
+  updateTodayStats();
+}
+
+function mergeCompletedApplications(completedTasks) {
+  const appGroups = {};
+  const otherTasks = [];
+  
+  completedTasks.forEach(task => {
+    if ((task.type === 'application' || task.type === 'tailoring') && task.refId) {
+      if (!appGroups[task.refId]) {
+        appGroups[task.refId] = { tailoring: null, application: null };
+      }
+      if (task.type === 'tailoring') {
+        appGroups[task.refId].tailoring = task;
+      } else {
+        appGroups[task.refId].application = task;
+      }
+    } else {
+      otherTasks.push(task);
+    }
+  });
+  
+  const merged = [];
+  
+  // Check each app group
+  Object.keys(appGroups).forEach(refId => {
+    const group = appGroups[refId];
+    if (group.tailoring && group.application) {
+      // Both complete - merge!
+      const app = state.applications.find(a => a.id === refId);
+      const celebrationEmojis = ['🎉', '🚀', '💪', '⭐', '🎊', '✨', '🔥', '💼'];
+      const emoji = celebrationEmojis[Math.floor(Math.random() * celebrationEmojis.length)];
+      
+      merged.push({
+        merged: true,
+        refId,
+        app,
+        tailoringTask: group.tailoring,
+        applicationTask: group.application,
+        emoji,
+        totalTime: (group.tailoring.actualTime || 0) + (group.application.actualTime || 0)
+      });
+    } else {
+      // Only one complete - show individually
+      if (group.tailoring) otherTasks.push(group.tailoring);
+      if (group.application) otherTasks.push(group.application);
+    }
+  });
+  
+  return [...merged, ...otherTasks];
+}
+
+function renderMergedApplicationCard(item) {
+  return `
+    <div class="task-card ok" style="opacity: 0.8; min-height: 60px; background: linear-gradient(135deg, rgba(121, 221, 148, 0.1), rgba(90, 208, 255, 0.1));">
+      <div class="icon">${item.emoji}</div>
+      <div style="flex: 1;">
+        <div style="font-weight: 600; margin-bottom: 4px;">
+          ${item.app.company} - Application Complete!
+        </div>
+        <div style="font-size: 14px; color: var(--muted);">
+          ${item.app.role} • ${item.totalTime} min total
+        </div>
+        <div style="font-size: 12px; color: var(--ok); margin-top: 4px;">
+          ✓ Tailored (${item.tailoringTask.actualTime}m) • ✓ Submitted (${item.applicationTask.actualTime}m)
+        </div>
+      </div>
+      <div style="font-size: 28px; color: var(--ok);">✓</div>
+    </div>
+  `;
+}
+
+function renderTaskCard(task, isCompleted) {
+  const urgency = getTaskUrgency(task);
+  const icon = getTaskIcon(task.type);
+  const detail = getTaskDetail(task);
+  const accumulatedTime = state.taskProgress[task.id] || 0;
+  
+  if (isCompleted) {
+    // Slim completed card
+    const celebrationEmojis = {
+      application: ['🎉', '🚀', '💪', '⭐'],
+      networking: ['🤝', '🌟', '💫', '👏'],
+      tailoring: ['✏️', '📝', '✨'],
+      event: ['🎊', '🎯', '⭐']
+    };
+    const emojis = celebrationEmojis[task.type] || ['✓'];
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+    
+    return `
+      <div class="task-card ok" style="opacity: 0.7; min-height: 60px;">
+        <div class="icon">${emoji}</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 600; margin-bottom: 4px;">${detail.title}</div>
+          <div style="font-size: 14px; color: var(--muted);">${detail.subtitle} • ${task.actualTime}m</div>
+        </div>
+        <div style="font-size: 24px; color: var(--ok);">✓</div>
+      </div>
+    `;
+  }
+  
+  // Full active card
+  return `
+    <div class="task-card ${urgency}" onclick='enterFocus("${task.id}")'>
+      <div class="icon">${icon}</div>
+      <div style="flex: 1;">
+        <div style="font-weight: 600; margin-bottom: 4px;">${detail.title}</div>
+        <div style="font-size: 14px; color: var(--muted);">${detail.subtitle}</div>
+        ${task.deadline ? `<div style="font-size: 12px; color: var(--warn); margin-top: 4px;">⏰ ${formatDate(task.deadline)}</div>` : ''}
+        ${accumulatedTime > 0 ? `<div style="font-size: 12px; color: var(--accent); margin-top: 4px;">⏱️ ${accumulatedTime} min in progress</div>` : ''}
+      </div>
+      <div style="font-size: 14px; color: var(--muted);">
+        ${task.estimatedTime} min
+      </div>
+    </div>
+  `;
+}
+
+function updateTodayStats() {
+  const today = getTodayISO();
+  const todayTasks = state.dailyTasks[today] || [];
+  
+  // Count completions by type
+  const completedApps = todayTasks.filter(t => t.completed && t.type === 'application').length;
+  const completedNet = todayTasks.filter(t => t.completed && t.type === 'networking').length;
+  
+  // Calculate daily quotas
+  const daysLeft = 7 - getDaysDifference(today, state.weekStart);
+  const appsLeft = Math.max(0, state.targets.apps - state.completedThisWeek.apps);
+  const netLeft = Math.max(0, state.targets.networking - state.completedThisWeek.networking);
+  const dailyAppsQuota = Math.ceil(appsLeft / Math.max(1, daysLeft));
+  const dailyNetQuota = Math.ceil(netLeft / Math.max(1, daysLeft));
+  
+  // Update apps quota
+  const appsCompleteEl = document.getElementById('todayAppsComplete');
+  const appsTargetEl = document.getElementById('todayAppsTarget');
+  if (appsCompleteEl && appsTargetEl) {
+    appsCompleteEl.textContent = completedApps;
+    appsTargetEl.textContent = dailyAppsQuota;
+    
+    // Color coding
+    if (completedApps === 0) {
+      appsCompleteEl.style.color = 'var(--bad)';
+    } else if (completedApps === 1) {
+      appsCompleteEl.style.color = '#ff9f43'; // orange
+    } else if (completedApps === 2) {
+      appsCompleteEl.style.color = 'var(--warn)'; // yellow
+    } else if (completedApps >= dailyAppsQuota) {
+      appsCompleteEl.style.color = 'var(--ok)';
+    }
+  }
+  
+  // Update networking quota
+  const netCompleteEl = document.getElementById('todayNetComplete');
+  const netTargetEl = document.getElementById('todayNetTarget');
+  if (netCompleteEl && netTargetEl) {
+    netCompleteEl.textContent = completedNet;
+    netTargetEl.textContent = dailyNetQuota;
+    
+    // Color coding
+    if (completedNet === 0) {
+      netCompleteEl.style.color = 'var(--bad)';
+    } else if (completedNet >= dailyNetQuota) {
+      netCompleteEl.style.color = 'var(--ok)';
+    } else {
+      netCompleteEl.style.color = 'var(--warn)';
+    }
+  }
+  
+  // Update total time
+  const todayTracking = state.dailyTimeTracking[today] || { optimization: 0, execution: 0 };
+  const totalTime = todayTracking.optimization + todayTracking.execution;
+  const timeEl = document.getElementById('todayTimeTotal');
+  if (timeEl) {
+    timeEl.textContent = totalTime > 0 ? `${totalTime}m` : '0m';
+  }
+  
+  // Update streak
+  const streakEl = document.getElementById('todayStreak');
+  if (streakEl) {
+    streakEl.textContent = state.streaks.current || 0;
+  }
+}
+
+function getTaskUrgency(task) {
+  if (!task.deadline) return 'ok';
+  const days = getDaysDifference(task.deadline, getTodayISO());
+  if (days < 0) return 'urgent';
+  if (days <= 2) return 'urgent';
+  if (days <= 5) return 'soon';
+  return 'ok';
+}
+
+function getTaskIcon(type) {
+  const icons = {
+    application: '💼',
+    networking: '🤝',
+    tailoring: '✏️',
+    event: '📅'
+  };
+  return icons[type] || '📋';
+}
+
+function getTaskDetail(task) {
+  if (task.type === 'application') {
+    const app = state.applications.find(a => a.id === task.refId);
+    if (app) {
+      let action = 'Apply to';
+      if (app.status === 'tailoring') action = 'Tailor resume for';
+      if (app.status === 'ready') action = 'Submit application to';
+      return {
+        title: `${action} ${app.company}`,
+        subtitle: app.role
+      };
+    }
+  }
+  
+  if (task.type === 'networking') {
+    const contact = state.contacts.find(c => c.id === task.refId);
+    if (contact) {
+      return {
+        title: `Reach out to ${contact.name}`,
+        subtitle: contact.relationship
+      };
+    }
+  }
+  
+  if (task.type === 'tailoring') {
+    const app = state.applications.find(a => a.id === task.refId);
+    if (app) {
+      return {
+        title: `Tailor resume for ${app.company}`,
+        subtitle: app.role
+      };
+    }
+    return {
+      title: 'Tailor resume',
+      subtitle: 'General tailoring session'
+    };
+  }
+  
+  if (task.type === 'event') {
+    const event = state.events.find(e => e.id === task.refId);
+    if (event) {
+      return {
+        title: event.name,
+        subtitle: event.type
+      };
+    }
+  }
+  
+  return { title: 'Task', subtitle: '' };
+}
+
+// ==================== FOCUS MODE ====================
+function enterFocus(taskId) {
+  const today = getTodayISO();
+  const task = state.dailyTasks[today].find(t => t.id === taskId);
+  if (!task || task.completed) return;
+  
+  state.currentTask = task;
+  
+  // Check if task has accumulated time
+  if (!state.taskProgress[taskId]) {
+    state.taskProgress[taskId] = 0;
+  }
+  
+  state.focusStartTime = Date.now();
+  saveState();
+  
+  const detail = getTaskDetail(task);
+  const criteria = getCompletionCriteria(task);
+  
+  document.getElementById('focusTitle').textContent = detail.title;
+  document.getElementById('focusDescription').textContent = detail.subtitle;
+  document.getElementById('focusCriteria').textContent = criteria;
+  
+  // Show optimization progress if it's an optimization task
+  if (isOptimizationTask(task)) {
+    const today = getTodayISO();
+    const todayTracking = state.dailyTimeTracking[today] || { optimization: 0, execution: 0 };
+    const currentTaskTime = state.taskProgress[taskId] || 0;
+    const totalOptTime = todayTracking.optimization + currentTaskTime;
+    
+    document.getElementById('optimizationProgress').style.display = 'block';
+    document.getElementById('optProgressText').textContent = 
+      `${totalOptTime}/${state.guardrails.maxOptimizationTime} min`;
+    document.getElementById('optProgressBar').value = totalOptTime;
+    document.getElementById('optProgressBar').max = state.guardrails.maxOptimizationTime;
+  } else {
+    document.getElementById('optimizationProgress').style.display = 'none';
+  }
+  
+  document.getElementById('focusMode').style.display = 'flex';
+  
+  startFocusTimer();
+}
+
+function startFocusTimer() {
+  updateTimer();
+  state.focusInterval = setInterval(updateTimer, 1000);
+  
+  // Check guardrails if enabled
+  if (state.guardrails.enabled && !state.guardrailOverride) {
+    checkGuardrailsInterval();
+  }
+}
+
+function checkGuardrailsInterval() {
+  // Check every minute
+  state.guardrailCheckInterval = setInterval(() => {
+    if (!state.currentTask || !state.focusStartTime) {
+      clearInterval(state.guardrailCheckInterval);
+      return;
+    }
+    
+    const elapsed = Math.floor((Date.now() - state.focusStartTime) / 1000 / 60);
+    const task = state.currentTask;
+    
+    // Warning threshold
+    if (elapsed === state.guardrails.warningThreshold) {
+      showGuardrailWarning(
+        'Time Check',
+        `You've been working on this task for ${elapsed} minutes. Consider wrapping up soon to keep momentum.`
+      );
+    }
+    
+    // Max tailor time
+    if (task.type === 'tailoring' && elapsed >= state.guardrails.maxTailorTime) {
+      showGuardrailWarning(
+        'Time to Move On',
+        `You've hit your ${state.guardrails.maxTailorTime}-minute limit for resume tailoring. Time to take action instead of optimizing!`
+      );
+      state.guardrailOverride = false; // Reset for next task
+    }
+    
+    // Check daily optimization time
+    const today = getTodayISO();
+    const todayTracking = state.dailyTimeTracking[today] || { optimization: 0, execution: 0 };
+    
+    if (isOptimizationTask(task) && todayTracking.optimization >= state.guardrails.maxOptimizationTime) {
+      showGuardrailWarning(
+        'Daily Optimization Limit Reached',
+        `You've spent ${state.guardrails.maxOptimizationTime} minutes on optimization today. Switch to execution mode (applications, networking).`
+      );
+      state.guardrailOverride = false;
+    }
+  }, 60000); // Check every minute
+}
+
+function isOptimizationTask(task) {
+  return task.type === 'tailoring' || task.type === 'llm_chat' || task.type === 'strategy';
+}
+
+function showGuardrailWarning(title, message) {
+  if (state.guardrailOverride) return; // User already chose to continue
+  
+  document.getElementById('guardrailTitle').textContent = title;
+  document.getElementById('guardrailMessage').textContent = message;
+  document.getElementById('guardrailWarning').classList.add('active');
+  
+  // Pause the timer visually
+  if (state.focusInterval) {
+    clearInterval(state.focusInterval);
+  }
+}
+
+function continueAnyway() {
+  state.guardrailOverride = true;
+  closeModal('guardrailWarning');
+  
+  // Resume timer
+  if (state.focusStartTime) {
+    startFocusTimer();
+  }
+}
+
+function updateTimer() {
+  if (!state.focusStartTime) return;
+  
+  const elapsed = Math.floor((Date.now() - state.focusStartTime) / 1000);
+  const taskId = state.currentTask?.id;
+  const previousTime = taskId ? (state.taskProgress[taskId] || 0) : 0;
+  const totalSeconds = previousTime * 60 + elapsed;
+  
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  document.getElementById('focusTimer').textContent = 
+    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  
+  // Update optimization progress bar in real-time
+  if (state.currentTask && isOptimizationTask(state.currentTask)) {
+    const today = getTodayISO();
+    const todayTracking = state.dailyTimeTracking[today] || { optimization: 0, execution: 0 };
+    const currentMinutes = Math.floor(elapsed / 60);
+    const totalOptTime = todayTracking.optimization + previousTime + currentMinutes;
+    
+    document.getElementById('optProgressText').textContent = 
+      `${totalOptTime}/${state.guardrails.maxOptimizationTime} min`;
+    document.getElementById('optProgressBar').value = totalOptTime;
+  }
+}
+
+function exitFocus() {
+  saveTaskProgress(); // Save before exiting
+  
+  if (state.focusInterval) {
+    clearInterval(state.focusInterval);
+    state.focusInterval = null;
+  }
+  
+  if (state.guardrailCheckInterval) {
+    clearInterval(state.guardrailCheckInterval);
+    state.guardrailCheckInterval = null;
+  }
+  
+  state.currentTask = null;
+  state.focusStartTime = null;
+  state.guardrailOverride = false;
+  saveState();
+  
+  document.getElementById('focusMode').style.display = 'none';
+  renderTodayTasks();
+}
+
+function pauseTask() {
+  saveTaskProgress();
+  exitFocus();
+}
+
+function switchTask() {
+  saveTaskProgress();
+  exitFocus();
+  // User will manually pick next task from Today view
+}
+
+function saveTaskProgress() {
+  if (!state.currentTask || !state.focusStartTime) return;
+  
+  const elapsed = Math.floor((Date.now() - state.focusStartTime) / 1000 / 60);
+  const taskId = state.currentTask.id;
+  
+  if (!state.taskProgress[taskId]) {
+    state.taskProgress[taskId] = 0;
+  }
+  
+  state.taskProgress[taskId] += elapsed;
+  saveState();
+}
+
+function completeTask() {
+  if (!state.currentTask) return;
+  
+  try {
+    const today = getTodayISO();
+    if (!state.dailyTasks[today]) {
+      console.error('No tasks for today');
+      return;
+    }
+    
+    const task = state.dailyTasks[today].find(t => t.id === state.currentTask.id);
+    
+    if (!task) {
+      console.error('Task not found');
+      return;
+    }
+    
+    task.completed = true;
+    task.completedAt = new Date().toISOString();
+    
+    const elapsed = Math.floor((Date.now() - state.focusStartTime) / 1000 / 60);
+    const taskId = task.id;
+    const previousTime = state.taskProgress[taskId] || 0;
+    const totalTime = previousTime + elapsed;
+    
+    task.actualTime = totalTime;
+    
+    // Track time
+    if (!state.dailyTimeTracking[today]) {
+      state.dailyTimeTracking[today] = { optimization: 0, execution: 0 };
+    }
+    
+    if (isOptimizationTask(task)) {
+      state.dailyTimeTracking[today].optimization += totalTime;
+    } else {
+      state.dailyTimeTracking[today].execution += totalTime;
+    }
+    
+    // Clear task progress
+    if (state.taskProgress[taskId]) {
+      delete state.taskProgress[taskId];
+    }
+    
+    // Update weekly progress
+    if (task.type === 'application') {
+      state.completedThisWeek.apps++;
+      
+      const app = state.applications.find(a => a.id === task.refId);
+      if (app) {
+        if (app.status === 'queued') app.status = 'tailoring';
+        else if (app.status === 'tailoring' || app.status === 'ready') {
+          app.status = 'sent';
+          app.dateSent = today;
+        }
+      }
+    } else if (task.type === 'networking') {
+      state.completedThisWeek.networking++;
+      
+      const contact = state.contacts.find(c => c.id === task.refId);
+      if (contact) {
+        contact.lastContact = today;
+        contact.status = 'contacted';
+      }
+    } else if (task.type === 'event') {
+      state.completedThisWeek.events++;
+      
+      const event = state.events.find(e => e.id === task.refId);
+      if (event) event.attended = true;
+    }
+    
+    // Check for streaks and milestones
+    updateStreaks();
+    checkMilestones();
+    
+    saveState();
+    
+    exitFocus();
+    
+    console.log('Task completed, showing celebration for:', task.type);
+    
+    // Show celebration
+    setTimeout(() => {
+      showCelebration(task);
+    }, 100);
+    
+  } catch (err) {
+    console.error('Error completing task:', err);
+    alert('Error completing task. Your progress has been saved.');
+    exitFocus();
+  }
+}
+
+function getCompletionCriteria(task) {
+  if (task.type === 'application') {
+    const app = state.applications.find(a => a.id === task.refId);
+    if (app) {
+      if (app.status === 'queued') return '• Open the job posting\n• Read through requirements\n• Save any questions or notes';
+      if (app.status === 'tailoring') return '• Update resume to match job description\n• Highlight relevant experience\n• Save tailored version';
+      if (app.status === 'ready') return '• Submit application through their system\n• Attach tailored resume\n• Note confirmation number';
+    }
+  }
+  
+  if (task.type === 'networking') {
+    return '• Draft and send your message\n• Personalize based on your relationship\n• Set follow-up reminder if needed';
+  }
+  
+  if (task.type === 'tailoring') {
+    return 'Quick tips:\n• Match keywords from target job descriptions\n• Lead with relevant achievements\n• Quantify impact where possible\n• Keep it concise and scannable\n\nUse Pause when you need a break!';
+  }
+  
+  if (task.type === 'event') {
+    return '• Attend the event\n• Take notes on key connections\n• Follow up with contacts made';
+  }
+  
+  return 'Complete the task as planned';
+}
+
+// ==================== NEXT TASK SELECTION ====================
+function updateStreaks() {
+  const today = getTodayISO();
+  const yesterday = addDays(today, -1);
+  
+  if (state.streaks.lastActiveDate === yesterday) {
+    // Continue streak
+    state.streaks.current++;
+  } else if (state.streaks.lastActiveDate !== today) {
+    // New streak or broken
+    state.streaks.current = 1;
+  }
+  
+  state.streaks.lastActiveDate = today;
+  
+  if (state.streaks.current > state.streaks.longest) {
+    state.streaks.longest = state.streaks.current;
+  }
+  
+  saveState();
+}
+
+function checkMilestones() {
+  const milestones = [
+    { id: 'first_app', condition: state.completedThisWeek.apps >= 1, title: '🎯 First Application!', message: 'You took the first step!' },
+    { id: 'five_apps', condition: state.completedThisWeek.apps >= 5, title: '💪 5 Applications!', message: 'Building momentum!' },
+    { id: 'ten_apps', condition: state.completedThisWeek.apps >= 10, title: '🚀 10 Applications!', message: 'You\'re on fire!' },
+    { id: 'week_complete', condition: state.completedThisWeek.apps >= state.targets.apps, title: '🏆 Weekly Goal Complete!', message: 'Outstanding work this week!' },
+    { id: 'streak_3', condition: state.streaks.current >= 3, title: '🔥 3-Day Streak!', message: 'Consistency is key!' },
+    { id: 'streak_7', condition: state.streaks.current >= 7, title: '⭐ Week Streak!', message: 'Unstoppable!' }
+  ];
+  
+  milestones.forEach(milestone => {
+    if (milestone.condition && !state.milestones.includes(milestone.id)) {
+      state.milestones.push(milestone.id);
+      // Could show special celebration here
+    }
+  });
+}
+
+function showCelebration(task) {
+  // Confetti effect
+  createConfetti();
+  
+  // Determine celebration message
+  let emoji = '🎉';
+  let title = 'Great work!';
+  let message = 'Task completed successfully!';
+  
+  if (task.type === 'application') {
+    emoji = '💼';
+    title = 'Application sent!';
+    message = `One step closer to your next role!`;
+  } else if (task.type === 'networking') {
+    emoji = '🤝';
+    title = 'Connection made!';
+    message = 'Your network is growing!';
+  } else if (task.type === 'tailoring') {
+    emoji = '✨';
+    title = 'Resume polished!';
+    message = 'Now go apply!';
+  }
+  
+  document.getElementById('celebrationEmoji').textContent = emoji;
+  document.getElementById('celebrationTitle').textContent = title;
+  document.getElementById('celebrationMessage').textContent = message;
+  document.getElementById('celebrationOverlay').classList.add('active');
+  
+  // Auto-close after 2 seconds
+  setTimeout(() => {
+    closeCelebration();
+  }, 2000);
+}
+
+function createConfetti() {
+  const colors = ['#5ad0ff', '#79dd94', '#ffbe5a', '#ff6b6b'];
+  for (let i = 0; i < 30; i++) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti-piece';
+    confetti.style.left = Math.random() * 100 + '%';
+    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+    document.body.appendChild(confetti);
+    
+    setTimeout(() => confetti.remove(), 3000);
+  }
+}
+
+function closeCelebration() {
+  document.getElementById('celebrationOverlay').classList.remove('active');
+  startBreathingBreak();
+}
+
+function startBreathingBreak() {
+  const today = getTodayISO();
+  const remaining = (state.dailyTasks[today] || []).filter(t => !t.completed);
+  
+  // Skip breathing if no more tasks
+  if (remaining.length === 0) {
+    alert('🎉 All done for today! Great work!');
+    return;
+  }
+  
+  document.getElementById('breathingBreak').classList.add('active');
+  
+  const phases = [
+    { text: 'Breathe in...', duration: 4000 },
+    { text: 'Hold...', duration: 7000 },
+    { text: 'Breathe out...', duration: 8000 }
+  ];
+  
+  let phaseIndex = 0;
+  
+  function nextPhase() {
+    if (phaseIndex >= phases.length) {
+      skipBreathing();
+      return;
+    }
+    
+    const breathingText = document.getElementById('breathingText');
+    if (breathingText) {
+      breathingText.textContent = phases[phaseIndex].text;
+    }
+    
+    state.breathingTimeout = setTimeout(() => {
+      phaseIndex++;
+      nextPhase();
+    }, phases[phaseIndex].duration);
+    
+    phaseIndex++;
+  }
+  
+  nextPhase();
+}
+
+function skipBreathing() {
+  if (state.breathingTimeout) {
+    clearTimeout(state.breathingTimeout);
+  }
+  document.getElementById('breathingBreak').classList.remove('active');
+  showNextTaskOptions();
+}
+
+function showNextTaskOptions() {
+  const today = getTodayISO();
+  const yesterday = addDays(today, -1);
+  
+  if (state.streaks.lastActiveDate === yesterday) {
+    // Continue streak
+    state.streaks.current++;
+  } else if (state.streaks.lastActiveDate !== today) {
+    // New streak or broken
+    state.streaks.current = 1;
+  }
+  
+  state.streaks.lastActiveDate = today;
+  
+  if (state.streaks.current > state.streaks.longest) {
+    state.streaks.longest = state.streaks.current;
+  }
+  
+  saveState();
+}
+
+function checkMilestones() {
+  const milestones = [
+    { id: 'first_app', condition: state.completedThisWeek.apps >= 1, title: '🎯 First Application!', message: 'You took the first step!' },
+    { id: 'five_apps', condition: state.completedThisWeek.apps >= 5, title: '💪 5 Applications!', message: 'Building momentum!' },
+    { id: 'ten_apps', condition: state.completedThisWeek.apps >= 10, title: '🚀 10 Applications!', message: 'You\'re on fire!' },
+    { id: 'week_complete', condition: state.completedThisWeek.apps >= state.targets.apps, title: '🏆 Weekly Goal Complete!', message: 'Outstanding work this week!' },
+    { id: 'streak_3', condition: state.streaks.current >= 3, title: '🔥 3-Day Streak!', message: 'Consistency is key!' },
+    { id: 'streak_7', condition: state.streaks.current >= 7, title: '⭐ Week Streak!', message: 'Unstoppable!' }
+  ];
+  
+  milestones.forEach(milestone => {
+    if (milestone.condition && !state.milestones.includes(milestone.id)) {
+      state.milestones.push(milestone.id);
+      // Could show special celebration here
+    }
+  });
+}
+  const today = getTodayISO();
+function showNextTaskOptions() {
+  const today = getTodayISO();
+  const remaining = (state.dailyTasks[today] || []).filter(t => !t.completed);
+  
+  if (remaining.length === 0) {
+    alert('🎉 All done for today! Great work!');
+    return;
+  }
+  
+  const recommended = getRecommendedTask(remaining);
+  if (recommended) {
+    const detail = getTaskDetail(recommended);
+    document.getElementById('recommendedTaskText').textContent = detail.title;
+  }
+  
+  document.getElementById('nextTaskModal').classList.add('active');
+}
+
+function getRecommendedTask(tasks) {
+  // Priority 1: Urgent deadlines
+  const urgent = tasks.filter(t => getTaskUrgency(t) === 'urgent');
+  if (urgent.length > 0) return urgent[0];
+  
+  // Priority 2: Soon deadlines
+  const soon = tasks.filter(t => getTaskUrgency(t) === 'soon');
+  if (soon.length > 0) return soon[0];
+  
+  // Priority 3: Alternate task types (avoid burnout)
+  const lastType = state.currentTask?.type;
+  const different = tasks.filter(t => t.type !== lastType);
+  if (different.length > 0) return different[0];
+  
+  return tasks[0];
+}
+
+function nextTaskRecommended() {
+  document.getElementById('nextTaskModal').classList.remove('active');
+  const today = getTodayISO();
+  const remaining = state.dailyTasks[today].filter(t => !t.completed);
+  const recommended = getRecommendedTask(remaining);
+  enterFocus(recommended.id);
+}
+
+function nextTaskRandom() {
+  document.getElementById('nextTaskModal').classList.remove('active');
+  const today = getTodayISO();
+  const remaining = state.dailyTasks[today].filter(t => !t.completed);
+  const random = remaining[Math.floor(Math.random() * remaining.length)];
+  enterFocus(random.id);
+}
+
+function nextTaskManual() {
+  document.getElementById('nextTaskModal').classList.remove('active');
+  renderTodayTasks();
+}
+
+// ==================== PLAN SCREEN ====================
+function renderPlanScreen() {
+  // Update progress bars
+  document.getElementById('planAppsProgress').textContent = state.completedThisWeek.apps;
+  document.getElementById('planAppsTarget').textContent = state.targets.apps;
+  document.getElementById('planAppsBar').value = state.completedThisWeek.apps;
+  document.getElementById('planAppsBar').max = state.targets.apps;
+  
+  document.getElementById('planNetProgress').textContent = state.completedThisWeek.networking;
+  document.getElementById('planNetTarget').textContent = state.targets.networking;
+  document.getElementById('planNetBar').value = state.completedThisWeek.networking;
+  document.getElementById('planNetBar').max = state.targets.networking;
+  
+  document.getElementById('planEventsProgress').textContent = state.completedThisWeek.events;
+  document.getElementById('planEventsTarget').textContent = state.targets.events;
+  
+  // Render applications
+  const appsList = document.getElementById('appsList');
+  if (state.applications.length === 0) {
+    appsList.innerHTML = '<div class="empty-state"><div class="empty-state-emoji">💼</div><p>No applications yet</p></div>';
+  } else {
+    appsList.innerHTML = state.applications.map(app => `
+      <div class="list-item">
+        <div class="list-item-title">
+          ${app.company} - ${app.role}
+          <span class="badge ${app.status}">${app.status}</span>
+        </div>
+        <div class="list-item-meta">
+          ${app.deadline ? `Deadline: ${formatDate(app.deadline)}` : 'No deadline'}
+          ${app.url ? `• <a href="${app.url}" target="_blank">View posting</a>` : ''}
+        </div>
+        ${app.notes ? `<div style="margin-top: 8px; font-size: 14px;">${app.notes}</div>` : ''}
+      </div>
+    `).join('');
+  }
+  
+  // Render contacts
+  const contactsList = document.getElementById('contactsList');
+  if (state.contacts.length === 0) {
+    contactsList.innerHTML = '<div class="empty-state"><div class="empty-state-emoji">🤝</div><p>No contacts yet</p></div>';
+  } else {
+    contactsList.innerHTML = state.contacts.map(contact => `
+      <div class="list-item">
+        <div class="list-item-title">
+          ${contact.name}
+          <span class="badge ${contact.status || 'queued'}">${contact.status || 'queued'}</span>
+        </div>
+        <div class="list-item-meta">
+          ${contact.relationship}${contact.company ? ` • ${contact.company}` : ''}
+          ${contact.lastContact ? `• Last contact: ${formatDate(contact.lastContact)}` : ''}
+        </div>
+        ${contact.notes ? `<div style="margin-top: 8px; font-size: 14px;">${contact.notes}</div>` : ''}
+      </div>
+    `).join('');
+  }
+  
+  // Render events
+  const eventsList = document.getElementById('eventsList');
+  if (state.events.length === 0) {
+    eventsList.innerHTML = '<div class="empty-state"><div class="empty-state-emoji">📅</div><p>No events scheduled</p></div>';
+  } else {
+    eventsList.innerHTML = state.events.map(event => `
+      <div class="list-item">
+        <div class="list-item-title">
+          ${event.name}
+          ${event.attended ? '<span class="badge ready">attended</span>' : ''}
+        </div>
+        <div class="list-item-meta">
+          ${formatDate(event.date)} • ${event.duration} min • ${event.type}
+        </div>
+        ${event.notes ? `<div style="margin-top: 8px; font-size: 14px;">${event.notes}</div>` : ''}
+      </div>
+    `).join('');
+  }
+}
+
+// ==================== MODALS ====================
+function showAddTaskModal() {
+  populateTaskRefSelect();
+  document.getElementById('quickAddSection').style.display = 'none';
+  document.getElementById('quickAddToggle').textContent = '+ Quick Add New';
+  document.getElementById('addTaskModal').classList.add('active');
+}
+
+function updateTaskModalForType() {
+  populateTaskRefSelect();
+  document.getElementById('quickAddSection').style.display = 'none';
+  document.getElementById('quickAddToggle').textContent = '+ Quick Add New';
+}
+
+function toggleQuickAdd() {
+  const quickSection = document.getElementById('quickAddSection');
+  const selectSection = document.getElementById('taskSelectSection');
+  const toggle = document.getElementById('quickAddToggle');
+  
+  if (quickSection.style.display === 'none') {
+    // Show quick add
+    const type = document.getElementById('newTaskType').value;
+    
+    if (type === 'application') {
+      quickSection.innerHTML = `
+        <div class="form-group">
+          <label>Company Name</label>
+          <input type="text" id="quickCompany" placeholder="Acme Corp">
+        </div>
+        <div class="form-group">
+          <label>Job Title</label>
+          <input type="text" id="quickRole" placeholder="Product Manager">
+        </div>
+        <div class="form-group">
+          <label>Job URL (optional)</label>
+          <input type="url" id="quickUrl" placeholder="https://...">
+        </div>
+      `;
+    } else if (type === 'networking') {
+      quickSection.innerHTML = `
+        <div class="form-group">
+          <label>Contact Name</label>
+          <input type="text" id="quickContactName" placeholder="John Smith">
+        </div>
+        <div class="form-group">
+          <label>Relationship</label>
+          <select id="quickContactRel">
+            <option value="friend">Friend/Ally</option>
+            <option value="contact">Professional Contact</option>
+            <option value="recruiter">Recruiter</option>
+            <option value="cold">Cold Contact</option>
+          </select>
+        </div>
+      `;
+    } else if (type === 'event') {
+      quickSection.innerHTML = `
+        <div class="form-group">
+          <label>Event Name</label>
+          <input type="text" id="quickEventName" placeholder="Career Fair">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="quickEventDate">
+        </div>
+      `;
+    } else if (type === 'tailoring') {
+      quickSection.innerHTML = `
+        <div class="form-group">
+          <label>Which application to tailor for?</label>
+          <select id="quickTailorApp">
+            ${state.applications.map(app => 
+              `<option value="${app.id}">${app.company} - ${app.role}</option>`
+            ).join('')}
+            ${state.applications.length === 0 ? '<option value="">No applications yet</option>' : ''}
+          </select>
+        </div>
+        <p style="color: var(--muted); font-size: 14px; padding: 12px;">Time spent will be tracked per application</p>
+      `;
+    }
+    
+    quickSection.style.display = 'block';
+    selectSection.style.display = 'none';
+    toggle.textContent = '← Back to Select Existing';
+  } else {
+    // Hide quick add
+    quickSection.style.display = 'none';
+    selectSection.style.display = 'block';
+    toggle.textContent = '+ Quick Add New';
+  }
+}
+
+function showAddAppModal() {
+  document.getElementById('addAppModal').classList.add('active');
+}
+
+function showAddContactModal() {
+  document.getElementById('addContactModal').classList.add('active');
+}
+
+function showAddEventModal() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('newEventDate').value = tomorrow.toISOString().split('T')[0];
+  document.getElementById('addEventModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+}
+
+function populateTaskRefSelect() {
+  const type = document.getElementById('newTaskType').value;
+  const select = document.getElementById('newTaskRef');
+  
+  select.innerHTML = '<option value="">-- Select --</option>';
+  
+  if (type === 'application') {
+    if (state.applications.length === 0) {
+      select.innerHTML = '<option value="">No applications yet - use Quick Add below</option>';
+    } else {
+      state.applications.forEach(app => {
+        const option = document.createElement('option');
+        option.value = app.id;
+        option.textContent = `${app.company} - ${app.role}`;
+        select.appendChild(option);
+      });
+    }
+  } else if (type === 'networking') {
+    if (state.contacts.length === 0) {
+      select.innerHTML = '<option value="">No contacts yet - use Quick Add below</option>';
+    } else {
+      state.contacts.forEach(contact => {
+        const option = document.createElement('option');
+        option.value = contact.id;
+        option.textContent = contact.name;
+        select.appendChild(option);
+      });
+    }
+  } else if (type === 'event') {
+    if (state.events.length === 0) {
+      select.innerHTML = '<option value="">No events yet - use Quick Add below</option>';
+    } else {
+      state.events.forEach(event => {
+        const option = document.createElement('option');
+        option.value = event.id;
+        option.textContent = event.name;
+        select.appendChild(option);
+      });
+    }
+  } else if (type === 'tailoring') {
+    if (state.applications.length === 0) {
+      select.innerHTML = '<option value="">No applications yet - add one first</option>';
+    } else {
+      state.applications.forEach(app => {
+        const option = document.createElement('option');
+        option.value = app.id;
+        option.textContent = `Tailor for: ${app.company} - ${app.role}`;
+        select.appendChild(option);
+      });
+    }
+  }
+}
+
+document.getElementById('newTaskType').addEventListener('change', populateTaskRefSelect);
+
+function addTaskToToday() {
+  const type = document.getElementById('newTaskType').value;
+  const quickSection = document.getElementById('quickAddSection');
+  let refId = document.getElementById('newTaskRef').value;
+  
+  // Check if using quick add
+  if (quickSection.style.display !== 'none') {
+    if (type === 'application') {
+      const company = document.getElementById('quickCompany')?.value.trim();
+      const role = document.getElementById('quickRole')?.value.trim();
+      const url = document.getElementById('quickUrl')?.value.trim();
+      
+      if (!company || !role) {
+        alert('Company and role are required');
+        return;
+      }
+      
+      // Create new application
+      const app = {
+        id: generateId(),
+        company,
+        role,
+        url,
+        deadline: null,
+        status: 'queued',
+        dateAdded: getTodayISO(),
+        dateSent: null,
+        notes: ''
+      };
+      
+      state.applications.push(app);
+      refId = app.id;
+      
+    } else if (type === 'networking') {
+      const name = document.getElementById('quickContactName')?.value.trim();
+      const relationship = document.getElementById('quickContactRel')?.value;
+      
+      if (!name) {
+        alert('Contact name is required');
+        return;
+      }
+      
+      // Create new contact
+      const contact = {
+        id: generateId(),
+        name,
+        relationship,
+        company: '',
+        notes: '',
+        status: 'queued',
+        lastContact: null
+      };
+      
+      state.contacts.push(contact);
+      refId = contact.id;
+      
+    } else if (type === 'event') {
+      const name = document.getElementById('quickEventName')?.value.trim();
+      const date = document.getElementById('quickEventDate')?.value;
+      
+      if (!name || !date) {
+        alert('Event name and date are required');
+        return;
+      }
+      
+      // Create new event
+      const event = {
+        id: generateId(),
+        name,
+        date,
+        duration: 120,
+        type: 'networking',
+        notes: '',
+        attended: false
+      };
+      
+      state.events.push(event);
+      refId = event.id;
+    } else if (type === 'tailoring') {
+      const appId = document.getElementById('quickTailorApp')?.value;
+      
+      if (!appId) {
+        alert('Please select an application to tailor for');
+        return;
+      }
+      
+      refId = appId;
+    }
+  }
+  
+  if (!refId) {
+    alert('Please select or create an item');
+    return;
+  }
+  
+  const today = getTodayISO();
+  if (!state.dailyTasks[today]) state.dailyTasks[today] = [];
+  
+  let estimatedTime = 15;
+  let deadline = null;
+  
+  if (type === 'tailoring') estimatedTime = 25;
+  if (type === 'networking') estimatedTime = 10;
+  
+  if (type === 'application') {
+    const app = state.applications.find(a => a.id === refId);
+    if (app?.deadline) deadline = app.deadline;
+  }
+  
+  if (type === 'event') {
+    const event = state.events.find(e => e.id === refId);
+    if (event) {
+      estimatedTime = event.duration;
+      deadline = event.date;
+    }
+  }
+  
+  const task = {
+    id: generateId(),
+    type,
+    refId: refId || null,
+    estimatedTime,
+    deadline,
+    completed: false,
+    actualTime: 0,
+    completedAt: null
+  };
+  
+  state.dailyTasks[today].push(task);
+  saveState();
+  
+  closeModal('addTaskModal');
+  renderTodayTasks();
+}
+
+function addApplication() {
+  const company = document.getElementById('newAppCompany').value.trim();
+  const role = document.getElementById('newAppRole').value.trim();
+  const url = document.getElementById('newAppUrl').value.trim();
+  const deadline = document.getElementById('newAppDeadline').value;
+  const notes = document.getElementById('newAppNotes').value.trim();
+  
+  if (!company || !role) {
+    alert('Company and role are required');
+    return;
+  }
+  
+  const app = {
+    id: generateId(),
+    company,
+    role,
+    url,
+    deadline: deadline || null,
+    status: 'queued',
+    dateAdded: getTodayISO(),
+    dateSent: null,
+    notes
+  };
+  
+  state.applications.push(app);
+  saveState();
+  
+  document.getElementById('newAppCompany').value = '';
+  document.getElementById('newAppRole').value = '';
+  document.getElementById('newAppUrl').value = '';
+  document.getElementById('newAppDeadline').value = '';
+  document.getElementById('newAppNotes').value = '';
+  
+  closeModal('addAppModal');
+  renderPlanScreen();
+}
+
+function addContact() {
+  const name = document.getElementById('newContactName').value.trim();
+  const relationship = document.getElementById('newContactRel').value;
+  const company = document.getElementById('newContactCompany').value.trim();
+  const notes = document.getElementById('newContactNotes').value.trim();
+  
+  if (!name) {
+    alert('Name is required');
+    return;
+  }
+  
+  const contact = {
+    id: generateId(),
+    name,
+    relationship,
+    company,
+    notes,
+    status: 'queued',
+    lastContact: null
+  };
+  
+  state.contacts.push(contact);
+  saveState();
+  
+  document.getElementById('newContactName').value = '';
+  document.getElementById('newContactCompany').value = '';
+  document.getElementById('newContactNotes').value = '';
+  
+  closeModal('addContactModal');
+  renderPlanScreen();
+}
+
+function addEvent() {
+  const name = document.getElementById('newEventName').value.trim();
+  const date = document.getElementById('newEventDate').value;
+  const duration = parseInt(document.getElementById('newEventDuration').value);
+  const type = document.getElementById('newEventType').value;
+  const notes = document.getElementById('newEventNotes').value.trim();
+  
+  if (!name || !date) {
+    alert('Name and date are required');
+    return;
+  }
+  
+  const event = {
+    id: generateId(),
+    name,
+    date,
+    duration,
+    type,
+    notes,
+    attended: false
+  };
+  
+  state.events.push(event);
+  saveState();
+  
+  document.getElementById('newEventName').value = '';
+  document.getElementById('newEventDate').value = '';
+  document.getElementById('newEventDuration').value = '120';
+  document.getElementById('newEventNotes').value = '';
+  
+  closeModal('addEventModal');
+  renderPlanScreen();
+}
+
+// ==================== SETTINGS ====================
+function renderSettings() {
+  document.getElementById('targetApps').value = state.targets.apps;
+  document.getElementById('targetNet').value = state.targets.networking;
+  document.getElementById('targetEvents').value = state.targets.events;
+  
+  // Guardrails
+  document.getElementById('guardrailsEnabled').checked = state.guardrails.enabled;
+  document.getElementById('maxTailorTime').value = state.guardrails.maxTailorTime;
+  document.getElementById('maxOptimizationTime').value = state.guardrails.maxOptimizationTime;
+  document.getElementById('warningThreshold').value = state.guardrails.warningThreshold;
+  
+  document.getElementById('guardrailsSettings').style.display = 
+    state.guardrails.enabled ? 'block' : 'none';
+}
+
+function toggleGuardrails() {
+  state.guardrails.enabled = document.getElementById('guardrailsEnabled').checked;
+  document.getElementById('guardrailsSettings').style.display = 
+    state.guardrails.enabled ? 'block' : 'none';
+  saveState();
+}
+
+function saveSettings() {
+  state.targets.apps = parseInt(document.getElementById('targetApps').value);
+  state.targets.networking = parseInt(document.getElementById('targetNet').value);
+  state.targets.events = parseInt(document.getElementById('targetEvents').value);
+  
+  state.guardrails.maxTailorTime = parseInt(document.getElementById('maxTailorTime').value);
+  state.guardrails.maxOptimizationTime = parseInt(document.getElementById('maxOptimizationTime').value);
+  state.guardrails.warningThreshold = parseInt(document.getElementById('warningThreshold').value);
+  
+  saveState();
+  alert('✓ Settings saved!');
+}
+
+// ==================== MISSION CONTROL ====================
+function renderMissionControl() {
+  const today = getTodayISO();
+  const dayOfWeek = getDaysDifference(today, state.weekStart);
+  
+  // Current Focus
+  const focusDisplay = document.getElementById('currentFocusDisplay');
+  if (state.missionControl.currentFocus) {
+    focusDisplay.textContent = state.missionControl.currentFocus;
+  } else {
+    focusDisplay.innerHTML = '<span style="color: var(--muted);">No focus set yet</span>';
+  }
+  
+  // Week Progress
+  document.getElementById('weekDayProgress').textContent = `Day ${dayOfWeek + 1} of 7`;
+  
+  // Week day dots
+  const dotsHtml = Array.from({length: 7}, (_, i) => {
+    const isPast = i < dayOfWeek;
+    const isToday = i === dayOfWeek;
+    const color = isPast ? 'var(--ok)' : isToday ? 'var(--accent)' : 'var(--line)';
+    return `<div style="flex: 1; height: 8px; background: ${color}; border-radius: 4px;"></div>`;
+  }).join('');
+  document.getElementById('weekDayDots').innerHTML = dotsHtml;
+  
+  // Progress bars
+  document.getElementById('missionAppsStatus').textContent = 
+    `${state.completedThisWeek.apps}/${state.targets.apps}`;
+  document.getElementById('missionAppsBar').value = state.completedThisWeek.apps;
+  document.getElementById('missionAppsBar').max = state.targets.apps;
+  
+  document.getElementById('missionNetStatus').textContent = 
+    `${state.completedThisWeek.networking}/${state.targets.networking}`;
+  document.getElementById('missionNetBar').value = state.completedThisWeek.networking;
+  document.getElementById('missionNetBar').max = state.targets.networking;
+  
+  document.getElementById('missionEventsStatus').textContent = 
+    `${state.completedThisWeek.events}/${state.targets.events}`;
+  document.getElementById('missionEventsBar').value = state.completedThisWeek.events;
+  document.getElementById('missionEventsBar').max = state.targets.events;
+  
+  // On track status
+  const onTrack = isOnTrack();
+  const statusDiv = document.getElementById('onTrackStatus');
+  if (onTrack.status === 'ahead') {
+    statusDiv.style.background = 'rgba(121, 221, 148, 0.2)';
+    statusDiv.style.color = 'var(--ok)';
+    statusDiv.textContent = '🎉 Ahead of schedule!';
+  } else if (onTrack.status === 'on_track') {
+    statusDiv.style.background = 'rgba(90, 208, 255, 0.2)';
+    statusDiv.style.color = 'var(--accent)';
+    statusDiv.textContent = '✓ On track';
+  } else {
+    statusDiv.style.background = 'rgba(255, 190, 90, 0.2)';
+    statusDiv.style.color = 'var(--warn)';
+    statusDiv.textContent = `⚠️ ${onTrack.message}`;
+  }
+  
+  // Time tracking
+  const todayTracking = state.dailyTimeTracking[today] || { optimization: 0, execution: 0 };
+  document.getElementById('todayOptTime').textContent = `${todayTracking.optimization} min`;
+  document.getElementById('todayExecTime').textContent = `${todayTracking.execution} min`;
+  
+  document.getElementById('todayOptBar').value = todayTracking.optimization;
+  document.getElementById('todayOptBar').max = state.guardrails.maxOptimizationTime;
+  
+  // Color code optimization time
+  const optTimeEl = document.getElementById('todayOptTime');
+  optTimeEl.classList.remove('ok', 'warn', 'bad');
+  if (todayTracking.optimization >= state.guardrails.maxOptimizationTime) {
+    optTimeEl.classList.add('bad');
+  } else if (todayTracking.optimization >= state.guardrails.maxOptimizationTime * 0.8) {
+    optTimeEl.classList.add('warn');
+  } else {
+    optTimeEl.classList.add('ok');
+  }
+}
+
+function isOnTrack() {
+  const today = getTodayISO();
+  const dayOfWeek = getDaysDifference(today, state.weekStart);
+  const daysLeft = 7 - dayOfWeek;
+  
+  const appsNeeded = state.targets.apps - state.completedThisWeek.apps;
+  const netNeeded = state.targets.networking - state.completedThisWeek.networking;
+  
+  if (appsNeeded <= 0 && netNeeded <= 0) {
+    return { status: 'ahead', message: '' };
+  }
+  
+  const appsDailyNeeded = Math.ceil(appsNeeded / daysLeft);
+  const netDailyNeeded = Math.ceil(netNeeded / daysLeft);
+  
+  if (appsDailyNeeded <= 3 && netDailyNeeded <= 2) {
+    return { status: 'on_track', message: '' };
+  }
+  
+  return { 
+    status: 'behind', 
+    message: `Need ${appsDailyNeeded} apps/day to catch up` 
+  };
+}
+
+function editFocus() {
+  document.getElementById('currentFocus').value = state.missionControl.currentFocus || '';
+  document.getElementById('editFocusModal').classList.add('active');
+}
+
+function saveFocus() {
+  state.missionControl.currentFocus = document.getElementById('currentFocus').value.trim();
+  saveState();
+  closeModal('editFocusModal');
+  renderMissionControl();
+}
+
+// ==================== DATA IMPORT/EXPORT ====================
+function exportData() {
+  const dataStr = JSON.stringify(state, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `career-chute-backup-${getTodayISO()}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData() {
+  const input = document.getElementById('importFileInput');
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (confirm('This will replace all your current data. Continue?')) {
+          state = imported;
+          saveState();
+          alert('✓ Data imported successfully!');
+          location.reload();
+        }
+      } catch (err) {
+        alert('Error importing data. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ==================== UTILITIES ====================
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// ==================== INITIALIZATION ====================
+try {
+  loadState();
+  renderStandup();
+} catch (err) {
+  console.error('Initialization error:', err);
+  // Initialize with defaults if loading fails
+  state = {
+    version: '2.0.0',
+    weekStart: getMonday(),
+    targets: { apps: 15, networking: 10, events: 1 },
+    applications: [],
+    contacts: [],
+    events: [],
+    dailyTasks: {},
+    completedThisWeek: { apps: 0, networking: 0, events: 0 },
+    currentTask: null,
+    focusStartTime: null,
+    guardrails: { enabled: true, maxTailorTime: 40, maxOptimizationTime: 60, warningThreshold: 30 },
+    missionControl: { currentFocus: '' },
+    dailyTimeTracking: {},
+    guardrailOverride: false,
+    taskProgress: {},
+    streaks: { current: 0, longest: 0, lastActiveDate: null },
+    milestones: []
+  };
+  saveState();
+  renderStandup();
+}
+
+// Auto-save every 30 seconds
+setInterval(saveState, 30000);
+
+// Check for weekly reset
+setInterval(() => {
+  if (!isCurrentWeek(state.weekStart)) {
+    const confirmReset = confirm('New week detected! Reset weekly progress?');
+    if (confirmReset) {
+      state.weekStart = getMonday();
+      state.completedThisWeek = { apps: 0, networking: 0, events: 0 };
+      saveState();
+      location.reload();
+    }
+  }
+}, 60000); // Check every minute
+</script>
+</body>
+</html>
