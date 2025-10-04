@@ -1618,7 +1618,7 @@ progress::-webkit-progress-value {
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
-// Emergency functions available immediately
+// Emergency functions available immediately - GLOBAL SCOPE
 window.emergencyOffline = function() {
   console.log('Emergency offline mode triggered');
   // Force update sync status
@@ -1629,9 +1629,9 @@ window.emergencyOffline = function() {
   try {
     const saved = localStorage.getItem('career_chute_backup');
     if (saved) {
-      state = JSON.parse(saved);
-      renderTodayTasks();
-      renderSettings();
+      window.state = JSON.parse(saved);
+      if (window.renderTodayTasks) window.renderTodayTasks();
+      if (window.renderSettings) window.renderSettings();
       alert('Emergency offline mode activated!');
     } else {
       alert('No local data found. Starting fresh.');
@@ -1650,6 +1650,15 @@ setTimeout(() => {
     window.emergencyOffline();
   }
 }, 3000);
+
+// Simple manual override - just change the text
+window.forceOffline = function() {
+  const syncText = document.getElementById('syncText');
+  if (syncText) {
+    syncText.textContent = 'Offline';
+    console.log('Forced offline mode - sync text updated');
+  }
+};
 
 // Firebase initialization
 const firebaseConfig = {
