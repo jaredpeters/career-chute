@@ -829,15 +829,19 @@ progress::-webkit-progress-value {
   
   /* Focus mode button layout for mobile */
   #focusMode .focus-content > div:first-child {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 16px;
+    justify-content: center;
   }
   
   #focusMode .focus-content > div:first-child button {
-    width: 100%;
-    height: 44px;
-    font-size: 16px;
+    flex: 1;
+    min-width: 120px;
+    height: 40px;
+    font-size: 14px;
+    padding: 0 12px;
   }
   
   /* Focus mode form elements */
@@ -879,9 +883,24 @@ progress::-webkit-progress-value {
   }
   
   #focusMode .focus-content > div:first-child button {
-    height: 48px;
-    font-size: 15px;
-    border-radius: 12px;
+    height: 40px;
+    font-size: 13px;
+    border-radius: 10px;
+    padding: 0 10px;
+  }
+  
+  /* General mobile button sizing */
+  .modern-button {
+    height: 44px;
+    font-size: 14px;
+    padding: 0 16px;
+  }
+  
+  /* Task action buttons on mobile */
+  .item-actions .icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
   
   /* Ensure content fits within safe area */
