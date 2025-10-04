@@ -4297,6 +4297,17 @@ async function initializeApp() {
 // Start the app when page loads
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM loaded, starting app...');
+  
+  // Emergency fallback - if app doesn't load in 5 seconds, force offline
+  setTimeout(() => {
+    const syncText = document.getElementById('syncText');
+    if (syncText && syncText.textContent === 'Loading...') {
+      console.warn('Emergency fallback triggered - forcing offline mode');
+      updateSyncStatus('error', 'Offline');
+      loadFromLocalStorage();
+    }
+  }, 5000);
+  
   initializeApp();
 });
 
@@ -4893,6 +4904,14 @@ function forceOfflineMode() {
     alert('Switched to offline mode. Your local data is loaded.');
   }
 }
+
+// Emergency global function - can be called from browser console
+window.emergencyOffline = function() {
+  console.log('Emergency offline mode triggered');
+  updateSyncStatus('error', 'Offline');
+  loadFromLocalStorage();
+  alert('Emergency offline mode activated!');
+};
   
   // Update theme toggle
   const themeToggle = document.getElementById('themeToggle');
