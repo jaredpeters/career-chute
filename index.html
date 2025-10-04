@@ -4892,6 +4892,21 @@ function renderSettings() {
   document.getElementById('targetNet').value = state.targets.networking;
   document.getElementById('targetEvents').value = state.targets.events;
   document.getElementById('userId').textContent = userId;
+  
+  // Update theme toggle
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) {
+    themeToggle.checked = state.theme === 'light';
+  }
+  
+  // Update guardrails settings
+  if (state.guardrails) {
+    document.getElementById('guardrailsEnabled').checked = state.guardrails.enabled;
+    document.getElementById('maxTailorTime').value = state.guardrails.maxTailorTime;
+    document.getElementById('maxOptimizationTime').value = state.guardrails.maxOptimizationTime;
+    document.getElementById('warningThreshold').value = state.guardrails.warningThreshold;
+    document.getElementById('guardrailsSettings').style.display = state.guardrails.enabled ? 'block' : 'none';
+  }
 }
 
 function syncToUserId() {
@@ -4953,21 +4968,6 @@ window.emergencyOffline = function() {
   loadFromLocalStorage();
   alert('Emergency offline mode activated!');
 };
-  
-  // Update theme toggle
-  const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle) {
-    themeToggle.checked = state.theme === 'light';
-  }
-  
-  if (state.guardrails) {
-    document.getElementById('guardrailsEnabled').checked = state.guardrails.enabled;
-    document.getElementById('maxTailorTime').value = state.guardrails.maxTailorTime;
-    document.getElementById('maxOptimizationTime').value = state.guardrails.maxOptimizationTime;
-    document.getElementById('warningThreshold').value = state.guardrails.warningThreshold;
-    document.getElementById('guardrailsSettings').style.display = state.guardrails.enabled ? 'block' : 'none';
-  }
-}
 
 function exportData() {
   const dataStr = JSON.stringify(state, null, 2);
