@@ -1327,6 +1327,17 @@ progress::-webkit-progress-value {
       <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Sync Status:</div>
       <div id="debugSyncStatus" style="font-size: 14px; font-family: monospace;">Loading...</div>
     </div>
+    
+    <div style="background: var(--panel); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+      <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Sync Devices:</div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <input type="text" id="syncUserIdInput" placeholder="Enter User ID from other device" style="flex: 1; min-width: 200px; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
+        <button onclick="syncToUserId()" class="modern-button secondary" style="height: 36px; padding: 0 12px; font-size: 13px;">Sync</button>
+      </div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 6px;">
+        Copy User ID from other device and paste above to sync data
+      </div>
+    </div>
   </div>
   
   <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line); margin-bottom: 100px;">
@@ -4812,6 +4823,51 @@ function renderSettings() {
   document.getElementById('targetNet').value = state.targets.networking;
   document.getElementById('targetEvents').value = state.targets.events;
   document.getElementById('userId').textContent = userId;
+}
+
+function syncToUserId() {
+  const newUserId = document.getElementById('syncUserIdInput').value.trim();
+  if (!newUserId) {
+    alert('Please enter a User ID');
+    return;
+  }
+  
+  if (newUserId === userId) {
+    alert('This is already your current User ID');
+    return;
+  }
+  
+  if (confirm(`Switch to User ID: ${newUserId}?\n\nThis will load data from that account and sync with other devices using the same ID.`)) {
+    // Save current data to localStorage as backup
+    localStorage.setItem('career_chute_backup_' + userId, JSON.stringify(state));
+    
+    // Switch to new User ID
+    userId = newUserId;
+    localStorage.setItem('career_chute_userId', userId);
+    
+    // Clear current state
+    state = {
+      weekStart: getWeekStart(),
+      targets: { apps: 15, net: 10 },
+      apps: [],
+      contacts: [],
+      dailyTasks: {},
+      weekDone: { apps: 0, net: 0 },
+      taskProgress: {},
+      streak: 0,
+      theme: 'dark'
+    };
+    
+    // Load data from new User ID
+    loadFromFirebase();
+    
+    // Update UI
+    renderSettings();
+    document.getElementById('syncUserIdInput').value = '';
+    
+    alert('Switched to new User ID! Loading data...');
+  }
+}
   
   // Update theme toggle
   const themeToggle = document.getElementById('themeToggle');
