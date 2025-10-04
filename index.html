@@ -800,16 +800,94 @@ progress::-webkit-progress-value {
     padding-bottom: 80px;
   }
   
+  #focusMode {
+    padding: 20px 16px;
+    justify-content: flex-start;
+    padding-top: 60px;
+  }
+  
+  .focus-content {
+    max-width: 100%;
+    width: 100%;
+    padding: 24px 20px;
+    margin: 0;
+  }
+  
   .focus-timer {
-    font-size: 56px;
+    font-size: 48px;
+    margin: 16px 0;
   }
   
   .focus-title {
-    font-size: 24px;
+    font-size: 20px;
+    margin-bottom: 16px;
   }
   
   .task-card {
     padding: 16px;
+  }
+  
+  /* Focus mode button layout for mobile */
+  #focusMode .focus-content > div:first-child {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  #focusMode .focus-content > div:first-child button {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+  }
+  
+  /* Focus mode form elements */
+  #focusMode textarea,
+  #focusMode input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+  }
+  
+  /* Focus mode completion criteria */
+  #focusMode .completion-criteria {
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 16px;
+  }
+}
+
+/* iPhone 14 Pro Max specific optimizations */
+@media (max-width: 430px) {
+  #focusMode {
+    padding: 16px 12px;
+    padding-top: 50px;
+  }
+  
+  .focus-content {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+  
+  .focus-timer {
+    font-size: 42px;
+    margin: 12px 0;
+  }
+  
+  .focus-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  #focusMode .focus-content > div:first-child button {
+    height: 48px;
+    font-size: 15px;
+    border-radius: 12px;
+  }
+  
+  /* Ensure content fits within safe area */
+  #focusMode .focus-content {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
   }
 }
 </style>
