@@ -1337,6 +1337,7 @@ progress::-webkit-progress-value {
       <div style="font-size: 11px; color: var(--muted); margin-top: 6px;">
         Copy User ID from other device and paste above to sync data
       </div>
+      <button onclick="listAllUsers()" class="modern-button ghost" style="height: 32px; padding: 0 8px; font-size: 12px; margin-top: 8px;">Show All User IDs</button>
     </div>
     
     <div style="background: var(--panel); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
@@ -1982,7 +1983,11 @@ function setupRealtimeSync() {
   if (unsubscribe) unsubscribe();
   
   try {
-    unsubscribe = db.collection('users').doc(userId).onSnapshot(doc => {
+    console.log('Setting up realtime sync for user:', userId);
+    unsubscribe = db.collection('users').doc(userId).onSnapshot({
+      includeMetadataChanges: false
+    }, doc => {
+      console.log('Realtime update received:', doc.exists);
       if (doc.exists && !isSyncing) {
         const data = doc.data();
         if (data.lastUpdated) {
@@ -2000,9 +2005,13 @@ function setupRealtimeSync() {
           setTimeout(() => { isSyncing = false; }, 100);
         }
       }
+    }, error => {
+      console.error('Realtime sync error:', error);
+      updateSyncStatus('error', 'Sync Error');
     });
   } catch (error) {
     console.error('Realtime sync setup error:', error);
+    updateSyncStatus('error', 'Sync Setup Error');
   }
 }
 
@@ -5004,6 +5013,36 @@ window.emergencyOffline = function() {
   loadFromLocalStorage();
   alert('Emergency offline mode activated!');
 };
+
+// List all users in Firebase (for debugging)
+function listAllUsers() {
+  if (!firebaseAvailable || !db) {
+    alert('Firebase not available');
+    return;
+  }
+  
+  updateSyncStatus('syncing', 'Loading users...');
+  
+  db.collection('users').get().then(querySnapshot => {
+    let userList = 'Found ' + querySnapshot.size + ' users:\n\n';
+    querySnapshot.forEach(doc => {
+      const data = doc.data();
+      const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : 'Never';
+      const taskCount = data.dailyTasks ? Object.keys(data.dailyTasks).length : 0;
+      userList += `ID: ${doc.id}\n`;
+      userList += `Last Updated: ${lastUpdated}\n`;
+      userList += `Tasks: ${taskCount}\n`;
+      userList += `Apps: ${data.apps ? data.apps.length : 0}\n\n`;
+    });
+    
+    updateSyncStatus('synced', 'Users loaded');
+    alert(userList);
+  }).catch(error => {
+    console.error('Error loading users:', error);
+    updateSyncStatus('error', 'Error');
+    alert('Failed to load users: ' + error.message);
+  });
+}
 
 function exportData() {
   const dataStr = JSON.stringify(state, null, 2);
