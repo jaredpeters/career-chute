@@ -1323,6 +1323,10 @@ progress::-webkit-progress-value {
     <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">
       Your data syncs automatically across all devices using this ID.
     </p>
+    <div style="background: var(--panel); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Sync Status:</div>
+      <div id="debugSyncStatus" style="font-size: 14px; font-family: monospace;">Loading...</div>
+    </div>
   </div>
   
   <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line); margin-bottom: 100px;">
@@ -1736,6 +1740,7 @@ function generateId() {
 function updateSyncStatus(status, text) {
   const indicator = document.getElementById('syncStatus');
   const textEl = document.getElementById('syncText');
+  const debugEl = document.getElementById('debugSyncStatus');
   
   if (!indicator || !textEl) return;
   
@@ -1744,6 +1749,11 @@ function updateSyncStatus(status, text) {
   if (status === 'synced') indicator.classList.add('synced');
   
   textEl.textContent = text;
+  
+  // Update debug status
+  if (debugEl) {
+    debugEl.textContent = `${status || 'idle'}: ${text} | Firebase: ${firebaseAvailable ? 'connected' : 'offline'}`;
+  }
 }
 
 function saveToFirebase() {
