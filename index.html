@@ -1338,6 +1338,7 @@ progress::-webkit-progress-value {
         Copy User ID from other device and paste above to sync data
       </div>
       <button onclick="listAllUsers()" class="modern-button ghost" style="height: 32px; padding: 0 8px; font-size: 12px; margin-top: 8px;">Show All User IDs</button>
+      <button onclick="cleanupAndMigrateUsers()" class="modern-button primary" style="height: 32px; padding: 0 8px; font-size: 12px; margin-top: 8px;">Clean Up & Merge Users</button>
     </div>
     
     <div style="background: var(--panel); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
@@ -1723,12 +1724,12 @@ function initializeFirebase() {
   });
 }
 
-// User ID
-let userId = localStorage.getItem('career_chute_user_id');
-if (!userId) {
-  userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
-  localStorage.setItem('career_chute_user_id', userId);
-}
+// Single shared User ID for all devices
+const SHARED_USER_ID = 'career-chute-shared-user';
+let userId = SHARED_USER_ID;
+
+// Always use the shared User ID
+localStorage.setItem('career_chute_user_id', userId);
 
 // State
 let state = {
@@ -5042,6 +5043,89 @@ function listAllUsers() {
     updateSyncStatus('error', 'Error');
     alert('Failed to load users: ' + error.message);
   });
+}
+
+// Clean up old users and migrate to shared user
+function cleanupAndMigrateUsers() {
+  if (!firebaseAvailable || !db) {
+    alert('Firebase not available');
+    return;
+  }
+  
+  if (confirm('This will merge all user data into a single shared account and delete old users. Continue?')) {
+    updateSyncStatus('syncing', 'Migrating users...');
+    
+    db.collection('users').get().then(querySnapshot => {
+      let mergedData = {
+        weekStart: getWeekStart(),
+        targets: { apps: 15, net: 10 },
+        apps: [],
+        contacts: [],
+        dailyTasks: {},
+        weekDone: { apps: 0, net: 0 },
+        taskProgress: {},
+        streak: 0,
+        theme: 'dark'
+      };
+      
+      let userCount = 0;
+      let promises = [];
+      
+      querySnapshot.forEach(doc => {
+        if (doc.id !== SHARED_USER_ID) {
+          userCount++;
+          const data = doc.data();
+          
+          // Merge data (keep the most recent/complete data)
+          if (data.apps && data.apps.length > mergedData.apps.length) {
+            mergedData.apps = data.apps;
+          }
+          if (data.contacts && data.contacts.length > mergedData.contacts.length) {
+            mergedData.contacts = data.contacts;
+          }
+          if (data.dailyTasks) {
+            Object.assign(mergedData.dailyTasks, data.dailyTasks);
+          }
+          if (data.weekDone) {
+            mergedData.weekDone = data.weekDone;
+          }
+          if (data.taskProgress) {
+            Object.assign(mergedData.taskProgress, data.taskProgress);
+          }
+          if (data.streak > mergedData.streak) {
+            mergedData.streak = data.streak;
+          }
+          if (data.theme) {
+            mergedData.theme = data.theme;
+          }
+          
+          // Delete old user
+          promises.push(db.collection('users').doc(doc.id).delete());
+        }
+      });
+      
+      // Save merged data to shared user
+      promises.push(db.collection('users').doc(SHARED_USER_ID).set({
+        ...mergedData,
+        lastUpdated: new Date().toISOString()
+      }));
+      
+      Promise.all(promises).then(() => {
+        updateSyncStatus('synced', 'Migration complete');
+        alert(`Migration complete! Merged ${userCount} users into shared account.`);
+        
+        // Reload the app with merged data
+        state = mergedData;
+        renderTodayTasks();
+        renderPlanScreen();
+        renderSettings();
+      }).catch(error => {
+        console.error('Migration error:', error);
+        updateSyncStatus('error', 'Migration failed');
+        alert('Migration failed: ' + error.message);
+      });
+    });
+  }
 }
 
 function exportData() {
