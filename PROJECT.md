@@ -454,6 +454,39 @@ users/
 
 ---
 
+## Phase 3.6: Gmail Job Alert Integration (NEXT)
+
+Goal: Auto-scan Gmail for job alerts from Indeed/LinkedIn and add to pipeline
+
+Features:
+- Gmail OAuth integration
+- Scan last 3 days of unread job alerts
+- Parse job details from email HTML (no external scraping needed)
+- Extract: title, company, location, salary, URL
+- Smart deduplication by URL
+- Auto-add to pipeline with new status "queued"
+- Manual "Scan Now" button (no auto-scheduling yet)
+- Runs in browser (no backend needed for Phase 1)
+
+New Application Fields:
+- location (string, optional)
+- salary (string, optional)  
+- source ('manual' | 'indeed' | 'linkedin')
+- addedVia ('manual' | 'email_scan')
+
+Email Sources Monitored:
+- jobalerts-noreply@linkedin.com
+- noreply@indeed.com
+
+Technical Approach:
+- Gmail API with OAuth (gmail.readonly, gmail.modify scopes)
+- Parse email HTML directly (no ScraperAPI needed)
+- 3-day lookback window for unread emails
+- Deduplication via normalized URLs
+- Mark processed emails as read
+
+Status: Ready to implement
+
 ## 📝 Notes & Decisions
 
 ### Recent Decisions

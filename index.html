@@ -1350,6 +1350,39 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
+  <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line);">
+    <h3 style="margin-bottom: 16px;">📧 Email Integration</h3>
+    <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">
+      Automatically scan Gmail for job alerts from LinkedIn and Indeed
+    </p>
+    
+    <div style="background: var(--panel); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Google Client ID</label>
+        <input type="text" id="gmailClientId" placeholder="Your Google OAuth Client ID" style="width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
+        <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+          Get from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--accent);">Google Cloud Console</a>
+        </div>
+      </div>
+      
+      <div id="gmailConnectionStatus" style="margin-bottom: 12px;">
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Status:</div>
+        <div id="gmailStatusText" style="font-size: 14px; color: var(--muted);">Not connected</div>
+      </div>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button id="connectGmailBtn" onclick="connectGmail()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Connect Gmail</button>
+        <button id="disconnectGmailBtn" onclick="disconnectGmail()" class="modern-button secondary" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Disconnect</button>
+        <button id="scanEmailsBtn" onclick="scanJobAlerts()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Scan for Jobs Now</button>
+      </div>
+      
+      <div id="lastScanInfo" style="margin-top: 12px; font-size: 12px; color: var(--muted); display: none;">
+        <div id="lastScanTime"></div>
+        <div id="lastScanResults"></div>
+      </div>
+    </div>
+  </div>
+  
   <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line); margin-bottom: 100px;">
     <h3 style="margin-bottom: 16px;">Data Management</h3>
     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -1616,6 +1649,7 @@ progress::-webkit-progress-value {
 
 <input type="file" id="importFileInput" accept=".json" style="display: none;">
 
+<script src="https://apis.google.com/js/api.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
@@ -1755,7 +1789,17 @@ let state = {
   streaks: { current: 0, longest: 0, lastActiveDate: null },
   milestones: [],
   timeBlocking: null,
-  theme: 'dark'
+  theme: 'dark',
+  gmail: {
+    enabled: false,
+    connected: false,
+    userEmail: null,
+    clientId: '',
+    accessToken: null,
+    tokenExpiry: null,
+    lastScanTime: null,
+    lastScanResults: { added: 0, duplicates: 0, emailsProcessed: 0 }
+  }
 };
 
 let isSyncing = false;
