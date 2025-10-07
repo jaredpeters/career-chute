@@ -1425,6 +1425,7 @@ progress::-webkit-progress-value {
           <button class="modern-button secondary" onclick="loadOAuthConfig('netlify')" style="height: 32px; padding: 0 12px; font-size: 12px;">Netlify</button>
           <button class="modern-button secondary" onclick="loadOAuthConfig('localhost')" style="height: 32px; padding: 0 12px; font-size: 12px;">Localhost</button>
           <button class="modern-button secondary" onclick="saveOAuthConfig()" style="height: 32px; padding: 0 12px; font-size: 12px;">Save Current</button>
+          <button class="modern-button secondary" onclick="testOAuthConfig()" style="height: 32px; padding: 0 12px; font-size: 12px;">Test Config</button>
         </div>
         <input type="text" id="gmailClientId" placeholder="Your Google OAuth Client ID" oninput="handleGmailClientIdChange(this.value)" style="width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
         <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
@@ -5122,6 +5123,36 @@ function saveOAuthConfig() {
   }
 }
 
+function testOAuthConfig() {
+  const currentOrigin = window.location.origin;
+  const clientId = state.gmail.clientId;
+  const redirectUri = state.gmail.redirectUri;
+  
+  console.log('=== OAuth Configuration Test ===');
+  console.log('Current Origin:', currentOrigin);
+  console.log('Client ID:', clientId);
+  console.log('Redirect URI:', redirectUri);
+  
+  let message = `OAuth Configuration Test:\n\n`;
+  message += `Current Origin: ${currentOrigin}\n`;
+  message += `Client ID: ${clientId ? 'Set' : 'Not Set'}\n`;
+  message += `Redirect URI: ${redirectUri || 'Not Set'}\n\n`;
+  
+  if (currentOrigin === 'https://cchute.netlify.app') {
+    message += `For Netlify, you need to add to Google Cloud Console:\n`;
+    message += `- Authorized JavaScript origins: https://cchute.netlify.app\n`;
+    message += `- Authorized redirect URIs: https://cchute.netlify.app\n\n`;
+  } else if (currentOrigin === 'http://localhost:8000') {
+    message += `For Localhost, you need to add to Google Cloud Console:\n`;
+    message += `- Authorized JavaScript origins: http://localhost:8000\n`;
+    message += `- Authorized redirect URIs: http://localhost:8000\n\n`;
+  }
+  
+  message += `Click "Netlify" or "Localhost" button to configure for your current domain.`;
+  
+  alert(message);
+}
+
 function initGoogleAPI() {
   if (typeof gapi === 'undefined') {
     console.error('Google APIs not loaded');
@@ -5181,7 +5212,12 @@ function connectGmail() {
     return;
   }
   
+  console.log('Starting Gmail OAuth flow...');
+  console.log('Current origin:', window.location.origin);
+  console.log('Configured redirect URI:', state.gmail.redirectUri);
+  
   authInstance.signIn().then(googleUser => {
+    console.log('OAuth flow completed successfully');
     const authResponse = googleUser.getAuthResponse();
     const profile = googleUser.getBasicProfile();
     
@@ -5197,9 +5233,10 @@ function connectGmail() {
     alert(`Gmail connected as ${state.gmail.userEmail}`);
   }).catch(error => {
     console.error('Gmail connection failed:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     
     if (error.error === 'popup_closed_by_user') {
-      alert('Gmail popup was closed. Please try again and make sure to:\n\n1. Allow popups for this site\n2. Complete the OAuth flow\n3. Don\'t close the popup window');
+      alert('Gmail popup was closed. This usually means:\n\n1. The redirect URI is not configured in Google Cloud Console\n2. The popup was blocked by your browser\n3. You closed the popup before completing the flow\n\nPlease check Google Cloud Console and ensure both:\n- Authorized JavaScript origins: https://cchute.netlify.app\n- Authorized redirect URIs: https://cchute.netlify.app');
     } else if (error.error === 'access_denied') {
       alert('Gmail access was denied. Please try again and grant the necessary permissions.');
     } else {
