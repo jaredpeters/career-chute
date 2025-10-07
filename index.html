@@ -1421,11 +1421,12 @@ progress::-webkit-progress-value {
     <div style="background: var(--panel); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
       <div class="form-group" style="margin-bottom: 12px;">
         <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Google Client ID</label>
-        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
           <button class="modern-button secondary" onclick="loadOAuthConfig('netlify')" style="height: 32px; padding: 0 12px; font-size: 12px;">Netlify</button>
           <button class="modern-button secondary" onclick="loadOAuthConfig('localhost')" style="height: 32px; padding: 0 12px; font-size: 12px;">Localhost</button>
           <button class="modern-button secondary" onclick="saveOAuthConfig()" style="height: 32px; padding: 0 12px; font-size: 12px;">Save Current</button>
           <button class="modern-button secondary" onclick="testOAuthConfig()" style="height: 32px; padding: 0 12px; font-size: 12px;">Test Config</button>
+          <button class="modern-button secondary" onclick="resetGmailAPI()" style="height: 32px; padding: 0 12px; font-size: 12px;">Reset API</button>
         </div>
         <input type="text" id="gmailClientId" placeholder="Your Google OAuth Client ID" oninput="handleGmailClientIdChange(this.value)" style="width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
         <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
@@ -5103,11 +5104,13 @@ function loadOAuthConfig(environment) {
     state.gmail.redirectUri = config.redirectUri;
     saveToFirebase();
     
-    // Reinitialize Gmail API with new config
-    if (typeof gapi !== 'undefined') {
+    // Only initialize if not already initialized
+    if (typeof gapi !== 'undefined' && (!gapi.auth2 || !gapi.auth2.getAuthInstance())) {
       initGoogleAPI().catch(error => {
         console.warn('Gmail API initialization failed:', error);
       });
+    } else {
+      console.log('Gmail API already initialized, skipping re-initialization');
     }
     
     console.log(`Loaded ${environment} OAuth config`);
@@ -5153,10 +5156,39 @@ function testOAuthConfig() {
   alert(message);
 }
 
+function resetGmailAPI() {
+  if (typeof gapi !== 'undefined' && gapi.auth2) {
+    const authInstance = gapi.auth2.getAuthInstance();
+    if (authInstance) {
+      authInstance.disconnect();
+      console.log('Gmail API disconnected');
+    }
+  }
+  
+  // Clear the state
+  state.gmail.connected = false;
+  state.gmail.userEmail = null;
+  state.gmail.accessToken = null;
+  state.gmail.tokenExpiry = null;
+  
+  updateGmailUI();
+  saveToFirebase();
+  
+  console.log('Gmail API reset, you can now try connecting again');
+  alert('Gmail API reset. Please try connecting again.');
+}
+
 function initGoogleAPI() {
   if (typeof gapi === 'undefined') {
     console.error('Google APIs not loaded');
     return Promise.reject('Google APIs not loaded');
+  }
+  
+  // Check if already initialized
+  if (gapi.auth2 && gapi.auth2.getAuthInstance()) {
+    console.log('Gmail API already initialized, skipping...');
+    checkTokenExpiry();
+    return Promise.resolve();
   }
   
   return new Promise((resolve, reject) => {
