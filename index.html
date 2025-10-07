@@ -1246,6 +1246,52 @@ progress::-webkit-progress-value {
   </div>
 </div>
 
+<!-- Job Queue Screen -->
+<div id="jobs" class="screen">
+  <div class="header">
+    <h1>Job Queue</h1>
+    <div class="subtitle">Manage and prioritize your job applications</div>
+  </div>
+  
+  <!-- Job Queue Controls -->
+  <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+    <button class="modern-button primary" onclick="scanJobAlerts()">
+      📧 Scan Gmail for Jobs
+    </button>
+    <button class="modern-button secondary" onclick="addJobManually()">
+      ➕ Add Job Manually
+    </button>
+    <button class="modern-button secondary" onclick="exportJobQueue()">
+      📊 Export to Spreadsheet
+    </button>
+    <button class="modern-button secondary" onclick="openJobPrioritizationSettings()">
+      ⚙️ Prioritization Rules
+    </button>
+  </div>
+  
+  <!-- Job Queue Table -->
+  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;">
+    <div id="jobQueueTable">
+      <!-- Table will be populated by JavaScript -->
+    </div>
+  </div>
+  
+  <!-- Job Prioritization Settings Modal -->
+  <div id="jobPrioritizationModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>Job Prioritization Rules</h3>
+        <button class="modal-close" onclick="closeJobPrioritizationSettings()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="prioritizationSettings">
+          <!-- Settings will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Settings Screen -->
 <div id="settings" class="screen">
   <div class="header">
@@ -1298,7 +1344,7 @@ progress::-webkit-progress-value {
     
     <div id="guardrailsSettings" style="display: none; margin-left: 20px;">
       <div class="form-group">
-        <label>Max time on resume tailoring (minutes per session)</label>
+        <label>Max time on resume & cover letter tailoring (minutes per session)</label>
         <input type="number" id="maxTailorTime" min="15" max="120" value="40">
       </div>
       
@@ -1642,6 +1688,10 @@ progress::-webkit-progress-value {
   <button class="nav-btn" onclick="showScreen('progress')">
     📊
     <span>Progress</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('jobs')">
+    📋
+    <span>Job Queue</span>
   </button>
   <button class="nav-btn" onclick="showScreen('settings')">
     ⚙️
@@ -2085,6 +2135,7 @@ function showScreen(screenId) {
   }
   if (screenId === 'plan') renderPlanScreen();
   if (screenId === 'progress') renderProgress();
+  if (screenId === 'jobs') renderJobQueue();
   if (screenId === 'settings') renderSettings();
 }
 
@@ -2950,7 +3001,7 @@ function getTaskDetail(task) {
     const app = state.applications.find(a => a.id === task.refId);
     if (app) {
       let action = 'Apply to';
-      if (app.status === 'tailoring') action = 'Tailor resume for';
+      if (app.status === 'tailoring') action = 'Tailor resume & cover letter for';
       if (app.status === 'ready') action = 'Submit application to';
       return { title: `${action} ${app.company}`, subtitle: app.role };
     }
@@ -2966,9 +3017,9 @@ function getTaskDetail(task) {
   if (task.type === 'tailoring') {
     const app = state.applications.find(a => a.id === task.refId);
     if (app) {
-      return { title: `Tailor resume for ${app.company}`, subtitle: app.role };
+      return { title: `Tailor resume & cover letter for ${app.company}`, subtitle: app.role };
     }
-    return { title: 'Tailor resume', subtitle: 'General tailoring session' };
+    return { title: 'Tailor resume & cover letter', subtitle: 'General tailoring session' };
   }
   
   if (task.type === 'event') {
@@ -3329,7 +3380,7 @@ function getCompletionCriteria(task) {
     const app = state.applications.find(a => a.id === task.refId);
     if (app) {
       if (app.status === 'queued') return 'Open the job posting, read through requirements, save any questions or notes';
-      if (app.status === 'tailoring') return 'Update resume to match job description, highlight relevant experience, save tailored version';
+      if (app.status === 'tailoring') return 'Update resume & cover letter to match job description, highlight relevant experience, save tailored versions';
       if (app.status === 'ready') return 'Submit application through their system, attach tailored resume, note confirmation number';
     }
   }
@@ -3339,7 +3390,7 @@ function getCompletionCriteria(task) {
   }
   
   if (task.type === 'tailoring') {
-    return 'Match keywords from target job descriptions, lead with relevant achievements, quantify impact where possible, keep it concise and scannable';
+    return 'Match keywords from target job descriptions, lead with relevant achievements, quantify impact where possible, keep resume concise and scannable, customize cover letter for each role';
   }
   
   if (task.type === 'event') {
@@ -3402,7 +3453,7 @@ function showCelebration(task) {
     message = 'Your network is growing!';
   } else if (task.type === 'tailoring') {
     emoji = '✨';
-    title = 'Resume polished!';
+    title = 'Resume & cover letter polished!';
     message = 'Now go apply!';
   }
   
@@ -5161,6 +5212,216 @@ function updateGmailUI() {
       lastScanInfo.innerHTML = '';
     }
   }
+}
+
+// Job Queue Functions
+function renderJobQueue() {
+  const container = document.getElementById('jobQueueTable');
+  if (!container) return;
+  
+  // Get all applications and sort by priority
+  const jobs = state.applications.map(app => ({
+    ...app,
+    matchScore: calculateJobScore(app),
+    priority: getJobPriority(app)
+  })).sort((a, b) => b.matchScore - a.matchScore);
+  
+  if (jobs.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 40px; text-align: center; color: var(--muted);">
+        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+        <h3>No jobs in queue</h3>
+        <p>Scan Gmail or add jobs manually to get started</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Create table header
+  const tableHTML = `
+    <div style="display: grid; grid-template-columns: 40px 1fr 120px 100px 80px 100px 80px 120px; gap: 12px; padding: 16px; background: var(--glass-bg); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 14px;">
+      <div>✓</div>
+      <div>Company & Role</div>
+      <div>Match Score</div>
+      <div>Priority</div>
+      <div>Salary</div>
+      <div>Location</div>
+      <div>Status</div>
+      <div>Actions</div>
+    </div>
+    <div id="jobQueueRows">
+      ${jobs.map(job => renderJobRow(job)).join('')}
+    </div>
+  `;
+  
+  container.innerHTML = tableHTML;
+}
+
+function renderJobRow(job) {
+  const priorityColor = getPriorityColor(job.priority);
+  const statusColor = getStatusColor(job.status);
+  
+  return `
+    <div style="display: grid; grid-template-columns: 40px 1fr 120px 100px 80px 100px 80px 120px; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); align-items: center; font-size: 14px;">
+      <div>
+        <input type="checkbox" onchange="toggleJobSelection('${job.id}')" style="width: 16px; height: 16px;">
+      </div>
+      <div>
+        <div style="font-weight: 600; margin-bottom: 4px;">${job.company}</div>
+        <div style="color: var(--muted); font-size: 12px;">${job.role}</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="background: ${getScoreColor(job.matchScore)}; color: white; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 12px;">
+          ${job.matchScore}%
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <span style="background: ${priorityColor}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+          ${job.priority}
+        </span>
+      </div>
+      <div style="text-align: center; color: var(--muted);">
+        ${job.salary || 'N/A'}
+      </div>
+      <div style="text-align: center; color: var(--muted);">
+        ${job.location || 'N/A'}
+      </div>
+      <div style="text-align: center;">
+        <span style="background: ${statusColor}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+          ${job.status}
+        </span>
+      </div>
+      <div style="display: flex; gap: 4px; justify-content: center;">
+        <button class="icon-btn" onclick="editJob('${job.id}')" title="Edit">✏️</button>
+        <button class="icon-btn" onclick="deleteJob('${job.id}')" title="Delete">🗑️</button>
+        <button class="icon-btn" onclick="viewJobDetails('${job.id}')" title="View">👁️</button>
+      </div>
+    </div>
+  `;
+}
+
+function calculateJobScore(job) {
+  // This will use the prioritization rules from the external file
+  // For now, return a mock score
+  return Math.floor(Math.random() * 100);
+}
+
+function getJobPriority(job) {
+  const score = calculateJobScore(job);
+  if (score >= 80) return 'Hot';
+  if (score >= 60) return 'High';
+  if (score >= 40) return 'Medium';
+  return 'Low';
+}
+
+function getPriorityColor(priority) {
+  const colors = {
+    'Hot': 'var(--bad)',
+    'High': 'var(--warn)',
+    'Medium': 'var(--accent)',
+    'Low': 'var(--muted)'
+  };
+  return colors[priority] || 'var(--muted)';
+}
+
+function getStatusColor(status) {
+  const colors = {
+    'queued': 'var(--muted)',
+    'tailoring': 'var(--warn)',
+    'ready': 'var(--accent)',
+    'sent': 'var(--ok)',
+    'interview': 'var(--accent)',
+    'rejected': 'var(--bad)',
+    'offer': 'var(--ok)'
+  };
+  return colors[status] || 'var(--muted)';
+}
+
+function getScoreColor(score) {
+  if (score >= 80) return 'var(--ok)';
+  if (score >= 60) return 'var(--warn)';
+  return 'var(--bad)';
+}
+
+function scanJobAlerts() {
+  if (!state.gmail.connected) {
+    alert('Please connect Gmail first');
+    return;
+  }
+  
+  // This will be implemented in Phase 3
+  alert('Gmail scanning will be implemented next!');
+}
+
+function addJobManually() {
+  // Open a modal to add job manually
+  alert('Manual job addition will be implemented next!');
+}
+
+function exportJobQueue() {
+  // Export to CSV or Google Sheets
+  alert('Export functionality will be implemented next!');
+}
+
+function openJobPrioritizationSettings() {
+  document.getElementById('jobPrioritizationModal').style.display = 'flex';
+  renderPrioritizationSettings();
+}
+
+function closeJobPrioritizationSettings() {
+  document.getElementById('jobPrioritizationModal').style.display = 'none';
+}
+
+function renderPrioritizationSettings() {
+  const container = document.getElementById('prioritizationSettings');
+  container.innerHTML = `
+    <div style="display: grid; gap: 20px;">
+      <div>
+        <h4>Scoring Weights</h4>
+        <div style="display: grid; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label>Job Title Fit</label>
+            <input type="range" min="0" max="50" value="30" style="width: 200px;">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label>Location Preference</label>
+            <input type="range" min="0" max="50" value="20" style="width: 200px;">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label>Salary Alignment</label>
+            <input type="range" min="0" max="50" value="15" style="width: 200px;">
+          </div>
+        </div>
+      </div>
+      
+      <div>
+        <h4>Job Title Grades</h4>
+        <div style="display: grid; gap: 8px; font-size: 12px;">
+          <div><strong>Grade A (Excellent Fit):</strong> Solutions Engineer, Sales Engineer, Customer Success Engineer...</div>
+          <div><strong>Grade B (Moderate Fit):</strong> Account Manager, Business Development Manager...</div>
+          <div><strong>Grade C (Low Fit):</strong> Customer Service Rep, Data Entry Clerk...</div>
+        </div>
+      </div>
+      
+      <div>
+        <h4>Your Preferences</h4>
+        <div style="display: grid; gap: 12px;">
+          <div>
+            <label>Preferred Location Type</label>
+            <select style="width: 100%; padding: 8px; border-radius: 6px;">
+              <option value="remote">Remote</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">Onsite</option>
+            </select>
+          </div>
+          <div>
+            <label>Target Salary Range</label>
+            <input type="text" placeholder="e.g., 80000-120000" style="width: 100%; padding: 8px; border-radius: 6px;">
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function syncToUserId() {
