@@ -1034,13 +1034,13 @@ progress::-webkit-progress-value {
 
 <!-- Plan Screen -->
 <div id="plan" class="screen">
-  <div class="header">
-    <h1>Weekly Plan</h1>
+  <div class="header" style="margin-bottom: 20px;">
+    <h1 style="margin-bottom: 4px;">Weekly Plan</h1>
     <div class="subtitle">Manage your pipeline</div>
   </div>
   
-  <div style="margin-bottom: 30px;">
-    <h3 style="margin-bottom: 16px;">This Week's Targets</h3>
+  <div style="margin-bottom: 20px;">
+    <h3 style="margin-bottom: 12px; font-size: 18px;">This Week's Targets</h3>
     <div class="stats-grid" style="grid-template-columns: 1fr; gap: 12px;">
       <div class="stat-card" style="padding: 16px; display: flex; align-items: center; justify-content: space-between;">
         <div>
@@ -1331,9 +1331,9 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
-  <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--line);">
-    <h3 style="margin-bottom: 16px;">Guardrails</h3>
-    <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">Keep you on track and prevent optimization paralysis</p>
+  <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line);">
+    <h3 style="margin-bottom: 8px; font-size: 18px;">Guardrails</h3>
+    <p style="color: var(--muted); font-size: 13px; margin-bottom: 12px;">Keep you on track and prevent optimization paralysis</p>
     
     <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
       <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
@@ -1405,6 +1405,11 @@ progress::-webkit-progress-value {
     <div style="background: var(--panel); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
       <div class="form-group" style="margin-bottom: 12px;">
         <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Google Client ID</label>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <button class="modern-button secondary" onclick="loadOAuthConfig('netlify')" style="height: 32px; padding: 0 12px; font-size: 12px;">Netlify</button>
+          <button class="modern-button secondary" onclick="loadOAuthConfig('localhost')" style="height: 32px; padding: 0 12px; font-size: 12px;">Localhost</button>
+          <button class="modern-button secondary" onclick="saveOAuthConfig()" style="height: 32px; padding: 0 12px; font-size: 12px;">Save Current</button>
+        </div>
         <input type="text" id="gmailClientId" placeholder="Your Google OAuth Client ID" oninput="handleGmailClientIdChange(this.value)" style="width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
         <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
           Get from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--accent);">Google Cloud Console</a>
@@ -5060,6 +5065,45 @@ function handleGmailClientIdChange(clientId) {
   }
 }
 
+function loadOAuthConfig(environment) {
+  const configs = {
+    netlify: {
+      clientId: '906932405437-9r5i8d63ssle5sqas1fob1k7u4k57bfq.apps.googleusercontent.com',
+      redirectUri: 'https://cchute.netlify.app'
+    },
+    localhost: {
+      clientId: '906932405437-9r5i8d63ssle5sqas1fob1k7u4k57bfq.apps.googleusercontent.com',
+      redirectUri: 'http://localhost:8000'
+    }
+  };
+  
+  const config = configs[environment];
+  if (config) {
+    document.getElementById('gmailClientId').value = config.clientId;
+    state.gmail.clientId = config.clientId;
+    state.gmail.redirectUri = config.redirectUri;
+    saveToFirebase();
+    
+    // Reinitialize Gmail API with new config
+    if (typeof gapi !== 'undefined') {
+      initGoogleAPI().catch(error => {
+        console.warn('Gmail API initialization failed:', error);
+      });
+    }
+    
+    console.log(`Loaded ${environment} OAuth config`);
+  }
+}
+
+function saveOAuthConfig() {
+  const clientId = document.getElementById('gmailClientId').value;
+  if (clientId) {
+    state.gmail.clientId = clientId;
+    saveToFirebase();
+    console.log('OAuth config saved');
+  }
+}
+
 function initGoogleAPI() {
   if (typeof gapi === 'undefined') {
     console.error('Google APIs not loaded');
@@ -5068,12 +5112,19 @@ function initGoogleAPI() {
   
   return new Promise((resolve, reject) => {
     gapi.load('client:auth2', () => {
-      gapi.client.init({
+      const config = {
         discoveryDocs: ['https://gmail.googleapis.com/$discovery/rest?version=v1'],
         clientId: state.gmail.clientId,
         scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
-      }).then(() => {
-        console.log('Gmail API initialized');
+      };
+      
+      // Add redirect URI if available
+      if (state.gmail.redirectUri) {
+        config.redirect_uri = state.gmail.redirectUri;
+      }
+      
+      gapi.client.init(config).then(() => {
+        console.log('Gmail API initialized with redirect URI:', state.gmail.redirectUri || 'default');
         checkTokenExpiry();
         resolve();
       }).catch(error => {
@@ -5220,11 +5271,13 @@ function renderJobQueue() {
   if (!container) return;
   
   // Get all applications and sort by priority
-  const jobs = state.applications.map(app => ({
+  const jobs = (state.applications || []).map(app => ({
     ...app,
     matchScore: calculateJobScore(app),
     priority: getJobPriority(app)
   })).sort((a, b) => b.matchScore - a.matchScore);
+  
+  console.log('Rendering job queue with', jobs.length, 'jobs');
   
   if (jobs.length === 0) {
     container.innerHTML = `
@@ -5232,6 +5285,7 @@ function renderJobQueue() {
         <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
         <h3>No jobs in queue</h3>
         <p>Scan Gmail or add jobs manually to get started</p>
+        <p style="font-size: 12px; margin-top: 8px;">Current applications: ${state.applications?.length || 0}</p>
       </div>
     `;
     return;
