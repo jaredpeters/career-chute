@@ -58,7 +58,7 @@
   --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-glow: 0 0 20px rgba(217, 119, 6, 0.3);
   --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --gradient-primary: linear-gradient(135deg, #d97706, #b8650a);
+  --gradient-primary: linear-gradient(135deg, #2563eb, #1d4ed8);
   --gradient-accent: linear-gradient(135deg, rgba(217, 119, 6, 0.8), rgba(217, 119, 6, 0.4));
   
   /* Button Gradients - Light Mode */
@@ -229,7 +229,7 @@ body {
 
 .modern-button.primary {
   background: var(--gradient-primary);
-  color: #001018;
+  color: white;
 }
 
 .modern-button.secondary {
@@ -461,7 +461,7 @@ body {
 
 button {
   background: var(--gradient-primary);
-  color: #001018;
+  color: white;
   border: none;
   border-radius: 12px;
   padding: 16px 32px;
@@ -5170,6 +5170,17 @@ function connectGmail() {
     return;
   }
   
+  // Check if we're on the right domain for OAuth
+  const currentOrigin = window.location.origin;
+  if (currentOrigin === 'https://cchute.netlify.app' && !state.gmail.redirectUri?.includes('cchute.netlify.app')) {
+    alert('Please click "Netlify" button first to configure OAuth for this domain');
+    return;
+  }
+  if (currentOrigin === 'http://localhost:8000' && !state.gmail.redirectUri?.includes('localhost')) {
+    alert('Please click "Localhost" button first to configure OAuth for this domain');
+    return;
+  }
+  
   authInstance.signIn().then(googleUser => {
     const authResponse = googleUser.getAuthResponse();
     const profile = googleUser.getBasicProfile();
@@ -5186,7 +5197,14 @@ function connectGmail() {
     alert(`Gmail connected as ${state.gmail.userEmail}`);
   }).catch(error => {
     console.error('Gmail connection failed:', error);
-    alert('Failed to connect to Gmail: ' + error.error);
+    
+    if (error.error === 'popup_closed_by_user') {
+      alert('Gmail popup was closed. Please try again and make sure to:\n\n1. Allow popups for this site\n2. Complete the OAuth flow\n3. Don\'t close the popup window');
+    } else if (error.error === 'access_denied') {
+      alert('Gmail access was denied. Please try again and grant the necessary permissions.');
+    } else {
+      alert('Failed to connect to Gmail: ' + (error.error || error.message || 'Unknown error'));
+    }
   });
 }
 
