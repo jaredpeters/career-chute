@@ -2805,9 +2805,13 @@ function renderTaskCard(task, isCompleted) {
         <div class="icon">${emoji}</div>
         <div style="flex: 1;">
           <div style="font-weight: 600; margin-bottom: 4px;">${detail.title}</div>
-          <div style="font-size: 14px; color: var(--muted);">${detail.subtitle} • ${task.actualTime}m</div>
+          <div style="font-size: 14px; color: var(--muted);">${detail.subtitle} • ${task.actualTime || 0}m</div>
         </div>
         <div style="font-size: 24px; color: var(--ok);">✓</div>
+        <div class="item-actions" style="margin-left:8px;">
+          <button class="icon-btn" onclick="event.stopPropagation(); editQueueItem('${task.id}')" title="Edit">✏️</button>
+          <button class="icon-btn" onclick="event.stopPropagation(); deleteQueueItem('${task.id}')" title="Delete">🗑️</button>
+        </div>
       </div>
     `;
   }
