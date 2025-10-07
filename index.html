@@ -62,10 +62,10 @@
   --gradient-accent: linear-gradient(135deg, rgba(217, 119, 6, 0.8), rgba(217, 119, 6, 0.4));
   
   /* Button Gradients - Light Mode */
-  --btn-primary: linear-gradient(135deg, #d97706, #b8650a);
+  --btn-primary: linear-gradient(135deg, #2563eb, #1d4ed8);
   --btn-secondary: linear-gradient(135deg, rgba(45, 45, 45, 0.08), rgba(45, 45, 45, 0.04));
   --btn-success: linear-gradient(135deg, #059669, #047857);
-  --btn-warning: linear-gradient(135deg, #d97706, #b8650a);
+  --btn-warning: linear-gradient(135deg, #f59e0b, #d97706);
   --btn-danger: linear-gradient(135deg, #dc2626, #b91c1c);
 }
 
@@ -337,6 +337,15 @@ body {
 
 .sync-indicator.syncing { color: var(--warn); }
 .sync-indicator.synced { color: var(--ok); }
+
+/* Theme Toggle Switch */
+#themeToggle:checked + span {
+  background-color: var(--accent);
+}
+
+#themeToggle:checked + span span {
+  transform: translateX(26px);
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1321,12 +1330,17 @@ progress::-webkit-progress-value {
     
     <div class="glass-card" style="padding: 24px;">
       <h3 style="margin-bottom: 20px; color: var(--accent);">Appearance</h3>
-      <div style="background: var(--glass-bg); backdrop-filter: var(--backdrop-blur); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
-          <span style="font-size: 16px; color: var(--text);">Light Mode</span>
-          <input type="checkbox" id="themeToggle" onchange="toggleTheme()" style="width: auto; height: 24px; cursor: pointer;">
-        </label>
-      </div>
+    <div style="background: var(--glass-bg); backdrop-filter: var(--backdrop-blur); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+      <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
+        <span style="font-size: 16px; color: var(--text);">Theme</span>
+        <div style="position: relative; display: inline-block; width: 50px; height: 24px;">
+          <input type="checkbox" id="themeToggle" onchange="toggleTheme()" style="opacity: 0; width: 0; height: 0;">
+          <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--muted); transition: .4s; border-radius: 24px;">
+            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+          </span>
+        </div>
+      </label>
+    </div>
       <p style="color: var(--muted); font-size: 14px; margin: 0;">Switch between dark and light themes</p>
     </div>
   </div>
@@ -1343,19 +1357,21 @@ progress::-webkit-progress-value {
     </div>
     
     <div id="guardrailsSettings" style="display: none; margin-left: 20px;">
-      <div class="form-group">
-        <label>Max time on resume & cover letter tailoring (minutes per session)</label>
-        <input type="number" id="maxTailorTime" min="15" max="120" value="40">
-      </div>
-      
-      <div class="form-group">
-        <label>Max daily time on optimization tasks (minutes total)</label>
-        <input type="number" id="maxOptimizationTime" min="30" max="180" value="60">
-      </div>
-      
-      <div class="form-group">
-        <label>Time warning threshold (minutes)</label>
-        <input type="number" id="warningThreshold" min="10" max="60" value="30">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; align-items: end;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; margin-bottom: 4px;">Max tailoring time (min)</label>
+          <input type="number" id="maxTailorTime" min="15" max="120" value="40" style="height: 32px;">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; margin-bottom: 4px;">Max daily optimization (min)</label>
+          <input type="number" id="maxOptimizationTime" min="30" max="180" value="60" style="height: 32px;">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; margin-bottom: 4px;">Warning threshold (min)</label>
+          <input type="number" id="warningThreshold" min="10" max="60" value="30" style="height: 32px;">
+        </div>
       </div>
     </div>
   </div>
@@ -5069,11 +5085,13 @@ function loadOAuthConfig(environment) {
   const configs = {
     netlify: {
       clientId: '906932405437-9r5i8d63ssle5sqas1fob1k7u4k57bfq.apps.googleusercontent.com',
-      redirectUri: 'https://cchute.netlify.app'
+      redirectUri: 'https://cchute.netlify.app',
+      origin: 'https://cchute.netlify.app'
     },
     localhost: {
       clientId: '906932405437-9r5i8d63ssle5sqas1fob1k7u4k57bfq.apps.googleusercontent.com',
-      redirectUri: 'http://localhost:8000'
+      redirectUri: 'http://localhost:8000',
+      origin: 'http://localhost:8000'
     }
   };
   
@@ -5355,9 +5373,32 @@ function renderJobRow(job) {
 }
 
 function calculateJobScore(job) {
-  // This will use the prioritization rules from the external file
-  // For now, return a mock score
-  return Math.floor(Math.random() * 100);
+  // Use a deterministic score based on job properties
+  let score = 50; // Base score
+  
+  // Title-based scoring
+  const title = (job.role || '').toLowerCase();
+  if (title.includes('solutions engineer') || title.includes('sales engineer') || title.includes('customer success engineer')) {
+    score += 30;
+  } else if (title.includes('account manager') || title.includes('business development')) {
+    score += 20;
+  } else if (title.includes('customer service') || title.includes('data entry')) {
+    score -= 20;
+  }
+  
+  // Company-based scoring (if available)
+  if (job.company) {
+    const company = job.company.toLowerCase();
+    if (company.includes('tech') || company.includes('saas') || company.includes('software')) {
+      score += 10;
+    }
+  }
+  
+  // Status-based scoring
+  if (job.status === 'sent') score += 5;
+  if (job.status === 'interview') score += 10;
+  
+  return Math.min(100, Math.max(0, score));
 }
 
 function getJobPriority(job) {
