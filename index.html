@@ -1254,6 +1254,14 @@ progress::-webkit-progress-value {
     <div class="subtitle">Manage and prioritize your job applications</div>
   </div>
   
+  <!-- Job Prioritization Rules Section -->
+  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+    <h3 style="margin: 0 0 16px 0; font-size: 16px;">Job Prioritization Rules</h3>
+    <div id="prioritizationSettings">
+      <!-- Settings will be populated by JavaScript -->
+    </div>
+  </div>
+  
   <!-- Job Queue Controls -->
   <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
     <button class="modern-button primary" onclick="scanJobAlerts()" title="Scan Gmail for new job postings">
@@ -1269,10 +1277,6 @@ progress::-webkit-progress-value {
     </button>
     <button class="modern-button secondary" onclick="bulkDeleteJobs()" title="Delete selected jobs">
       🗑️ Delete Selected
-    </button>
-    <div style="border-left: 1px solid var(--line); height: 32px; margin: 0 4px;"></div>
-    <button class="modern-button secondary" onclick="openJobPrioritizationSettings()" title="Configure job scoring and prioritization">
-      ⚙️ Prioritization Rules
     </button>
   </div>
   
@@ -1426,6 +1430,7 @@ progress::-webkit-progress-value {
         <button onclick="initializeSpreadsheet()" class="modern-button primary" title="Create a new Google Sheet for your job applications" style="height: 36px; padding: 0 16px; font-size: 13px;">Create Spreadsheet</button>
         <button onclick="syncToGoogleSheets()" class="modern-button secondary" title="Sync all jobs to your Google Sheet" style="height: 36px; padding: 0 16px; font-size: 13px;">Sync Now</button>
         <button onclick="openSpreadsheet()" id="openSheetBtn" class="modern-button secondary" title="Open your spreadsheet in a new tab" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Open Sheet</button>
+        <button onclick="resetSpreadsheet()" class="modern-button secondary" title="Reset and create a new sheet" style="height: 36px; padding: 0 16px; font-size: 13px; color: var(--warn);">Reset Sheet Connection</button>
       </div>
       
       <div id="sheetsLastSync" style="margin-top: 12px; font-size: 12px; color: var(--muted);"></div>
@@ -2230,7 +2235,10 @@ function showScreen(screenId) {
   }
   if (screenId === 'plan') renderPlanScreen();
   if (screenId === 'progress') renderProgress();
-  if (screenId === 'jobs') renderJobQueue();
+  if (screenId === 'jobs') {
+    renderPrioritizationSettings();
+    renderJobQueue();
+  }
   if (screenId === 'settings') renderSettings();
 }
 
@@ -5530,13 +5538,11 @@ function renderJobQueue() {
     return;
   }
   
-  // Create table header
+  // Create table header (removed Score and Priority columns)
   const tableHTML = `
-    <div style="display: grid; grid-template-columns: 30px 2fr 80px 70px 90px 90px 70px 100px; gap: 8px; padding: 10px 12px; background: var(--glass-bg); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 13px;">
+    <div style="display: grid; grid-template-columns: 30px 2.5fr 100px 100px 70px 100px; gap: 8px; padding: 10px 12px; background: var(--glass-bg); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 13px;">
       <div>✓</div>
       <div>Company & Role</div>
-      <div>Score</div>
-      <div>Priority</div>
       <div>Salary</div>
       <div>Location</div>
       <div>Status</div>
@@ -5551,27 +5557,44 @@ function renderJobQueue() {
 }
 
 function renderJobRow(job) {
-  const priorityColor = getPriorityColor(job.priority);
   const statusColor = getStatusColor(job.status);
+  const roleTitle = (job.role || '').trim();
+  const grade = state.roleGrades[roleTitle] || 'ungraded';
+  const gradeColors = {
+    'A': { bg: '#16a34a', text: 'white' },
+    'B': { bg: '#ea580c', text: 'white' },
+    'C': { bg: '#dc2626', text: 'white' },
+    'ungraded': { bg: '#6b7280', text: 'white' }
+  };
+  const roleColor = gradeColors[grade];
   
   return `
-    <div style="display: grid; grid-template-columns: 30px 2fr 80px 70px 90px 90px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
+    <div style="display: grid; grid-template-columns: 30px 2.5fr 100px 100px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
       <div>
         <input type="checkbox" onchange="updateSelectedCount()" data-job-id="${job.id}" style="width: 14px; height: 14px;">
       </div>
       <div style="min-width: 0;">
-        <div style="font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</div>
-        <div style="color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.role}</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="background: ${getScoreColor(job.matchScore)}; color: white; padding: 3px 6px; border-radius: 10px; font-weight: 600; font-size: 11px;">
-          ${job.matchScore}%
-        </div>
-      </div>
-      <div style="text-align: center;">
-        <span style="background: ${priorityColor}; color: white; padding: 3px 6px; border-radius: 10px; font-size: 10px; font-weight: 600;">
-          ${job.priority}
-        </span>
+        <div style="font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</div>
+        <button 
+          onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
+          style="
+            background: ${roleColor.bg}; 
+            color: ${roleColor.text}; 
+            border: none; 
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            font-size: 11px; 
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+          "
+          onmouseover="this.style.opacity='0.8'"
+          onmouseout="this.style.opacity='1'"
+          title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+        >${job.role}</button>
       </div>
       <div style="text-align: center; color: var(--muted); font-size: 12px;">
         ${job.salary || 'N/A'}
@@ -5662,6 +5685,17 @@ function getScoreColor(score) {
 }
 
 // Google Sheets Integration Functions
+function resetSpreadsheet() {
+  if (confirm('Reset spreadsheet connection?\n\nThis will disconnect the current sheet and let you create a new one. Your app data is safe.')) {
+    state.sheets.spreadsheetId = null;
+    state.sheets.spreadsheetUrl = null;
+    state.sheets.lastSync = null;
+    saveToFirebase();
+    updateSheetsUI();
+    alert('Spreadsheet connection reset! Click "Create Spreadsheet" to start fresh.');
+  }
+}
+
 async function initializeSpreadsheet() {
   if (!state.gmail.connected) {
     alert('Please connect Gmail first to use Google Sheets');
@@ -5669,13 +5703,21 @@ async function initializeSpreadsheet() {
   }
   
   try {
-    // Check if spreadsheet already exists
+    // Check if spreadsheet already exists and is accessible
     if (state.sheets.spreadsheetId) {
-      const response = await gapi.client.sheets.spreadsheets.get({
-        spreadsheetId: state.sheets.spreadsheetId
-      });
-      console.log('Existing spreadsheet found:', response.result.properties.title);
-      return state.sheets.spreadsheetId;
+      try {
+        const response = await gapi.client.sheets.spreadsheets.get({
+          spreadsheetId: state.sheets.spreadsheetId
+        });
+        console.log('Existing spreadsheet found:', response.result.properties.title);
+        alert('Spreadsheet already connected!\n\nClick "Open Sheet" to view it.\n\nTo create a new sheet, use "Reset Sheet Connection" first.');
+        return state.sheets.spreadsheetId;
+      } catch (error) {
+        // Spreadsheet not accessible (deleted/trashed), clear the ID
+        console.log('Spreadsheet not accessible, creating new one...');
+        state.sheets.spreadsheetId = null;
+        state.sheets.spreadsheetUrl = null;
+      }
     }
     
     // Create new spreadsheet
@@ -6363,6 +6405,7 @@ function closeJobPrioritizationSettings() {
 
 function renderPrioritizationSettings() {
   const container = document.getElementById('prioritizationSettings');
+  if (!container) return; // Exit if container doesn't exist
   
   // Get unique role titles from all applications
   const roleSet = new Set();
@@ -6372,57 +6415,63 @@ function renderPrioritizationSettings() {
     }
   });
   
-  const roles = Array.from(roleSet).sort();
+  // Sort roles by grade: A (green), B (orange), C (red), ungraded (gray)
+  const roles = Array.from(roleSet).sort((a, b) => {
+    const gradeOrder = { 'A': 0, 'B': 1, 'C': 2, 'ungraded': 3 };
+    const gradeA = state.roleGrades[a] || 'ungraded';
+    const gradeB = state.roleGrades[b] || 'ungraded';
+    
+    const orderDiff = gradeOrder[gradeA] - gradeOrder[gradeB];
+    if (orderDiff !== 0) return orderDiff;
+    
+    // If same grade, sort alphabetically
+    return a.localeCompare(b);
+  });
   
   container.innerHTML = `
     <div style="display: grid; gap: 16px;">
-      <div style="background: var(--panel-hover); padding: 12px; border-radius: 8px; font-size: 13px;">
-        <strong>How it works:</strong> Click each role title to cycle through grades:<br>
-        <span style="background: #6b7280; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Gray</span> = Ungraded
-        <span style="background: #16a34a; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Green</span> = Grade A (Excellent Fit)
-        <span style="background: #ea580c; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Orange</span> = Grade B (Moderate Fit)
-        <span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Red</span> = Grade C (Low Fit)
+      <div style="background: var(--panel-hover); padding: 12px; border-radius: 8px; font-size: 12px;">
+        <strong>How it works:</strong> Click role titles to cycle through grades<br>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+          <span style="background: #6b7280; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Gray = Ungraded</span>
+          <span style="background: #16a34a; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Green = Grade A</span>
+          <span style="background: #ea580c; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Orange = Grade B</span>
+          <span style="background: #dc2626; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Red = Grade C</span>
+        </div>
       </div>
       
-      <div>
-        <h4 style="margin: 0 0 12px 0;">Role Title Grades</h4>
-        ${roles.length === 0 ? 
-          '<p style="color: var(--text-muted); font-size: 14px;">No roles yet. Scan Gmail or add jobs manually to see role titles here.</p>' :
-          `<div style="display: flex; flex-wrap: wrap; gap: 8px;">
-            ${roles.map(role => {
-              const grade = state.roleGrades[role] || 'ungraded';
-              const colors = {
-                'A': { bg: '#16a34a', text: 'white' },
-                'B': { bg: '#ea580c', text: 'white' },
-                'C': { bg: '#dc2626', text: 'white' },
-                'ungraded': { bg: '#6b7280', text: 'white' }
-              };
-              const color = colors[grade];
-              
-              return `<button 
-                onclick="cycleRoleGrade('${role.replace(/'/g, "\\'")}')" 
-                style="
-                  background: ${color.bg}; 
-                  color: ${color.text}; 
-                  border: none; 
-                  padding: 6px 12px; 
-                  border-radius: 6px; 
-                  font-size: 12px; 
-                  cursor: pointer;
-                  transition: opacity 0.2s;
-                "
-                onmouseover="this.style.opacity='0.8'"
-                onmouseout="this.style.opacity='1'"
-                title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
-              >${role}</button>`;
-            }).join('')}
-          </div>`
-        }
-      </div>
-      
-      <div style="padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-muted);">
-        💡 <strong>Tip:</strong> New roles discovered from email scanning will automatically appear here as gray (ungraded). Grade them to improve job prioritization!
-      </div>
+      ${roles.length === 0 ? 
+        '<p style="color: var(--text-muted); font-size: 13px; margin: 0;">No roles yet. Scan Gmail or add jobs manually to see role titles here.</p>' :
+        `<div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          ${roles.map(role => {
+            const grade = state.roleGrades[role] || 'ungraded';
+            const colors = {
+              'A': { bg: '#16a34a', text: 'white' },
+              'B': { bg: '#ea580c', text: 'white' },
+              'C': { bg: '#dc2626', text: 'white' },
+              'ungraded': { bg: '#6b7280', text: 'white' }
+            };
+            const color = colors[grade];
+            
+            return `<button 
+              onclick="cycleRoleGrade('${role.replace(/'/g, "\\'")}')" 
+              style="
+                background: ${color.bg}; 
+                color: ${color.text}; 
+                border: none; 
+                padding: 6px 12px; 
+                border-radius: 6px; 
+                font-size: 12px; 
+                cursor: pointer;
+                transition: opacity 0.2s;
+              "
+              onmouseover="this.style.opacity='0.8'"
+              onmouseout="this.style.opacity='1'"
+              title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+            >${role}</button>`;
+          }).join('')}
+        </div>`
+      }
     </div>
   `;
 }
@@ -6435,8 +6484,9 @@ function cycleRoleGrade(roleTitle) {
   
   state.roleGrades[roleTitle] = gradeOrder[nextIndex];
   saveToFirebase();
-  renderPrioritizationSettings();
-  renderJobQueue(); // Update the job queue to reflect new priorities
+  
+  // Re-render both sections (but prioritization won't re-sort on each click)
+  renderJobQueue();
 }
 
 function syncToUserId() {
