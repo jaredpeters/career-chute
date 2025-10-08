@@ -6753,6 +6753,25 @@ function mapEmailFields(subject, body, from) {
     }
   }
   
+  // Additional salary extraction patterns
+  if (!salary) {
+    // Try various salary patterns
+    const salaryPatterns = [
+      /\$[\d,]+\s*-\s*\$[\d,]+/g,
+      /\$[\d,]+\s*to\s*\$[\d,]+/gi,
+      /\$[\d,]+\s*per\s+year/gi,
+      /\$[\d,]+\s*annually/gi
+    ];
+    
+    for (const pattern of salaryPatterns) {
+      const match = body.match(pattern);
+      if (match) {
+        salary = match[0];
+        break;
+      }
+    }
+  }
+  
   if (!url && parserConfig.patterns.body.url) {
     for (const pattern of parserConfig.patterns.body.url) {
       const match = body.match(pattern);
@@ -6780,12 +6799,52 @@ function mapEmailFields(subject, body, from) {
     }
   }
   
+  // Clean up location field to remove salary and other non-location data
+  if (location) {
+    // Remove salary ranges from location
+    location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
+    // Remove common non-location phrases
+    location = location.replace(/(package\s+to\s+support|remote|hybrid|full-time|part-time).*$/i, '').trim();
+    // Fix common truncations
+    if (location === 'Angeles') location = 'Los Angeles';
+    if (location === 'Monica') location = 'Santa Monica';
+    if (location === 'Francisco') location = 'San Francisco';
+    if (location === 'Diego') location = 'San Diego';
+  }
+  
   if (!role || role === 'Various Roles') {
     // Try to extract specific role from body
     const roleMatch = body.match(/([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive))/i);
     if (roleMatch) {
       role = roleMatch[1].trim();
     }
+  }
+  
+  // Clean up extracted data
+  if (company) {
+    // Remove "is hiring" and "are hiring" from company names
+    company = company.replace(/\s+(is|are)\s+hiring$/i, '').trim();
+    // Remove "and others" from company names
+    company = company.replace(/\s+and\s+others$/i, '').trim();
+  }
+  
+  if (location) {
+    // Fix common location truncations
+    if (location === 'Angeles') location = 'Los Angeles';
+    if (location === 'Monica') location = 'Santa Monica';
+    if (location === 'Francisco') location = 'San Francisco';
+    if (location === 'Diego') location = 'San Diego';
+    // Remove salary info from location field
+    location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
+    location = location.replace(/package\s+to\s+support.*$/i, '').trim();
+  }
+  
+  if (role) {
+    // Fix truncated role titles
+    if (role.startsWith('t ')) role = role.substring(2);
+    if (role.startsWith('a ')) role = role.substring(2);
+    // Clean up common role title issues
+    role = role.replace(/^\s*[a-z]\s+/, '').trim();
   }
   
   // Fallback if nothing was found
