@@ -4,6 +4,19 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.2.1] - 2025-10-08
+
+### 🔐 ADDED
+- **Google OAuth for Sheets**: Separate authentication for Google Sheets sync
+- **Google Auth UI**: Clean interface to configure Google Client ID
+- **Sheets-Only OAuth**: No longer requires Gmail connection for Sheets
+- **Auth Status Display**: Shows connection status and configuration steps
+
+### 🛠️ FIXED
+- **Sheets Dependency**: Removed Gmail requirement for Google Sheets sync
+- **OAuth Scope**: Limited to spreadsheets only (more secure)
+- **UI Integration**: Google auth section in settings page
+
 ## [3.2.0] - 2025-10-08
 
 ### 🧹 Major Cleanup

@@ -1571,6 +1571,28 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
+  <!-- Google OAuth Configuration (for Sheets only) -->
+  <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line);">
+    <h3 style="margin-bottom: 16px;">🔐 Google Authentication</h3>
+    <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">
+      Required for Google Sheets sync functionality
+    </p>
+    
+    <div style="background: var(--panel); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+      <div style="margin-bottom: 12px;">
+        <label for="google-client-id" style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">Google Client ID:</label>
+        <input type="text" id="google-client-id" placeholder="Enter your Google Client ID" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
+      </div>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button onclick="configureGoogleAuth()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 13px;">Configure Google Auth</button>
+        <button onclick="disconnectGoogle()" class="modern-button secondary" style="height: 36px; padding: 0 16px; font-size: 13px; color: var(--warn);">Disconnect</button>
+      </div>
+      
+      <div id="google-auth-status" style="margin-top: 12px; font-size: 12px; color: var(--muted);"></div>
+    </div>
+  </div>
+  
   <!-- ARCHIVED: Gmail Integration - Removed due to unreliable parsing -->
   <!-- See archived/EMAIL_PARSING_CODE_ARCHIVE.md for details -->
   <!-- Future: Consider Safari extension for direct DOM access -->
@@ -1963,7 +1985,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.2.0'; // Cleaned up: Archived email parsing, back to manual workflow
+const APP_VERSION = '3.2.1'; // Added Google OAuth for Sheets (without Gmail)
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -4757,6 +4779,9 @@ async function initializeApp() {
   // Display version info
   displayVersionInfo();
   
+  // Initialize Google auth UI
+  updateGoogleAuthUI();
+  
   // Show loading state
   updateSyncStatus('syncing', 'Starting...');
   
@@ -5678,19 +5703,19 @@ async function refreshGmailToken() {
         }
         
         if (response.access_token) {
-          state.gmail.accessToken = response.access_token;
-          state.gmail.tokenExpiry = Date.now() + (response.expires_in * 1000);
-          
-          // Set the token for API calls
-          if (gapi && gapi.client) {
-            gapi.client.setToken({
-              access_token: response.access_token
-            });
-          }
-          
-          saveToFirebase();
+        state.gmail.accessToken = response.access_token;
+        state.gmail.tokenExpiry = Date.now() + (response.expires_in * 1000);
+        
+        // Set the token for API calls
+        if (gapi && gapi.client) {
+          gapi.client.setToken({
+            access_token: response.access_token
+          });
+        }
+        
+        saveToFirebase();
           console.log('Gmail token refreshed successfully. New expiry:', new Date(state.gmail.tokenExpiry).toLocaleTimeString());
-          resolve();
+        resolve();
         } else {
           reject(new Error('No access token in response'));
         }
@@ -5915,28 +5940,28 @@ function renderJobRow(job) {
           >×</button>
         </div>
         <div style="display: flex; align-items: center; gap: 4px;">
-          <button 
-            onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
-            style="
-              background: ${roleColor.bg}; 
-              color: ${roleColor.text}; 
-              border: none; 
-              padding: 3px 8px; 
-              border-radius: 4px; 
-              font-size: 10px; 
-              cursor: pointer;
-              transition: opacity 0.2s;
-              white-space: normal;
-              word-wrap: break-word;
-              height: auto;
-              min-height: 20px;
-              display: inline-block;
-              text-align: center;
-            "
-            onmouseover="this.style.opacity='0.8'"
-            onmouseout="this.style.opacity='1'"
-            title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
-          >${job.role}</button>
+        <button 
+          onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
+          style="
+            background: ${roleColor.bg}; 
+            color: ${roleColor.text}; 
+            border: none; 
+            padding: 3px 8px; 
+            border-radius: 4px; 
+            font-size: 10px; 
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: normal;
+            word-wrap: break-word;
+            height: auto;
+            min-height: 20px;
+            display: inline-block;
+            text-align: center;
+          "
+          onmouseover="this.style.opacity='0.8'"
+          onmouseout="this.style.opacity='1'"
+          title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+        >${job.role}</button>
           ${hasMetadata ? getConfidenceIndicator(roleConfidence, 'role') : ''}
         </div>
       </div>
@@ -6093,6 +6118,77 @@ function getScoreColor(score) {
   return 'var(--bad)';
 }
 
+// Google OAuth Functions (for Sheets only)
+function configureGoogleAuth() {
+  const clientId = document.getElementById('google-client-id').value.trim();
+  
+  if (!clientId) {
+    alert('Please enter your Google Client ID first');
+    return;
+  }
+  
+  // Store client ID
+  state.google.clientId = clientId;
+  saveToFirebase();
+  
+  // Initialize Google Identity Services
+  if (typeof google !== 'undefined' && google.accounts) {
+    google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: (response) => {
+        if (response.access_token) {
+          state.google.accessToken = response.access_token;
+          state.google.connected = true;
+          state.google.lastConnected = new Date().toISOString();
+          saveToFirebase();
+          updateGoogleAuthUI();
+          alert('✅ Google authentication successful! You can now use Google Sheets sync.');
+        } else {
+          alert('❌ Google authentication failed. Please try again.');
+        }
+      }
+    }).requestAccessToken();
+  } else {
+    alert('Google Identity Services not loaded. Please refresh the page and try again.');
+  }
+}
+
+function disconnectGoogle() {
+  if (confirm('Disconnect Google authentication?\n\nThis will disable Google Sheets sync until you reconnect.')) {
+    state.google.connected = false;
+    state.google.accessToken = null;
+    state.google.lastConnected = null;
+    state.sheets.spreadsheetId = null;
+    state.sheets.spreadsheetUrl = null;
+    state.sheets.lastSync = null;
+    saveToFirebase();
+    updateGoogleAuthUI();
+    updateSheetsUI();
+    alert('Google authentication disconnected.');
+  }
+}
+
+function updateGoogleAuthUI() {
+  const statusEl = document.getElementById('google-auth-status');
+  const clientIdInput = document.getElementById('google-client-id');
+  
+  if (state.google.clientId) {
+    clientIdInput.value = state.google.clientId;
+  }
+  
+  if (state.google.connected) {
+    statusEl.innerHTML = '✅ Connected to Google<br><small>Sheets sync enabled</small>';
+    statusEl.style.color = 'var(--ok)';
+  } else if (state.google.clientId) {
+    statusEl.innerHTML = '⚠️ Not connected<br><small>Click "Configure Google Auth" to connect</small>';
+    statusEl.style.color = 'var(--warn)';
+  } else {
+    statusEl.innerHTML = '❌ Not configured<br><small>Enter Client ID and click "Configure Google Auth"</small>';
+    statusEl.style.color = 'var(--muted)';
+  }
+}
+
 // Google Sheets Integration Functions
 function resetSpreadsheet() {
   if (confirm('Reset spreadsheet connection?\n\nThis will disconnect the current sheet and let you create a new one. Your app data is safe.')) {
@@ -6106,8 +6202,8 @@ function resetSpreadsheet() {
 }
 
 async function initializeSpreadsheet() {
-  if (!state.gmail.connected) {
-    alert('Please connect Gmail first to use Google Sheets');
+  if (!state.google.connected) {
+    alert('Please configure Google authentication first to use Google Sheets');
     return;
   }
   
@@ -6525,7 +6621,7 @@ async function scanJobAlerts() {
       // If HTML extraction didn't work, fall back to standard parsing
       if (jobListings.length === 0) {
         const jobData = parseJobEmail(fullMessage.result);
-        if (jobData) {
+      if (jobData) {
           jobListings = [jobData];
         } else {
           rejectedCount++; // Counted as rejected if returned null
