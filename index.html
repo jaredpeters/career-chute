@@ -1565,6 +1565,7 @@ progress::-webkit-progress-value {
         <button onclick="syncToGoogleSheets()" class="modern-button secondary" title="Sync all jobs to your Google Sheet" style="height: 36px; padding: 0 16px; font-size: 13px;">Sync Now</button>
         <button onclick="openSpreadsheet()" id="openSheetBtn" class="modern-button secondary" title="Open your spreadsheet in a new tab" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Open Sheet</button>
         <button onclick="resetSpreadsheet()" class="modern-button secondary" title="Reset and create a new sheet" style="height: 36px; padding: 0 16px; font-size: 13px; color: var(--warn);">Reset Sheet Connection</button>
+        <button onclick="showCSVImport()" class="modern-button secondary" title="Import jobs from CSV (from Claude chat)" style="height: 36px; padding: 0 16px; font-size: 13px; color: var(--ok);">Import CSV</button>
       </div>
       
       <div id="sheetsLastSync" style="margin-top: 12px; font-size: 12px; color: var(--muted);"></div>
@@ -1593,6 +1594,58 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
+  <!-- CSV Import Modal -->
+  <div id="csvImportModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>📊 Import Jobs from CSV</h3>
+        <button onclick="closeCSVImport()" class="close-btn">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div style="margin-bottom: 20px;">
+          <h4>How to use:</h4>
+          <ol style="margin: 10px 0; padding-left: 20px; color: var(--muted);">
+            <li>Copy job listings from emails, job boards, etc.</li>
+            <li>Paste into your Claude chat with the prompt below</li>
+            <li>Copy the CSV output from Claude</li>
+            <li>Paste it here and click "Import Jobs"</li>
+          </ol>
+        </div>
+        
+        <div style="background: var(--panel); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+          <h4>Claude Prompt:</h4>
+          <textarea id="claudePrompt" readonly style="width: 100%; height: 120px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; resize: vertical;">Extract job data from the following text and output as CSV with these exact columns:
+company,role,location,salary,url,source,notes
+
+Rules:
+- company: Company name only (no "at" or extra text)
+- role: Job title/position
+- location: City, State format (or "Remote" if remote)
+- salary: Salary range if mentioned (e.g., "$80k-120k" or "Not specified")
+- url: Job posting URL if available (or "Not provided")
+- source: Where you found it (e.g., "LinkedIn", "Indeed", "Email")
+- notes: Any additional relevant info
+
+Output only the CSV data, no explanations. Include header row.
+
+Text to parse:</textarea>
+          <button onclick="copyPrompt()" class="modern-button secondary" style="margin-top: 8px;">Copy Prompt</button>
+        </div>
+        
+        <div>
+          <label for="csvData" style="display: block; margin-bottom: 8px; font-weight: 500;">Paste CSV data from Claude:</label>
+          <textarea id="csvData" placeholder="Paste the CSV output from Claude here..." style="width: 100%; height: 200px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; resize: vertical;"></textarea>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button onclick="closeCSVImport()" class="modern-button secondary">Cancel</button>
+        <button onclick="importCSVData()" class="modern-button primary">Import Jobs</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ARCHIVED: Gmail Integration - Removed due to unreliable parsing -->
   <!-- See archived/EMAIL_PARSING_CODE_ARCHIVE.md for details -->
   <!-- Future: Consider Safari extension for direct DOM access -->
@@ -1985,7 +2038,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.2.4'; // Add Client ID and fix Open Sheet button
+const APP_VERSION = '3.3.0'; // Add CSV import feature for Claude chat workflow
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -6509,6 +6562,141 @@ function openSpreadsheet() {
   } else {
     alert('No spreadsheet configured yet. Click "Create Spreadsheet" first.');
   }
+}
+
+// CSV Import Functions
+function showCSVImport() {
+  document.getElementById('csvImportModal').style.display = 'flex';
+}
+
+function closeCSVImport() {
+  document.getElementById('csvImportModal').style.display = 'none';
+  document.getElementById('csvData').value = '';
+}
+
+function copyPrompt() {
+  const promptText = document.getElementById('claudePrompt');
+  promptText.select();
+  document.execCommand('copy');
+  alert('Claude prompt copied to clipboard!');
+}
+
+function importCSVData() {
+  const csvData = document.getElementById('csvData').value.trim();
+  
+  if (!csvData) {
+    alert('Please paste CSV data from Claude first.');
+    return;
+  }
+  
+  try {
+    const lines = csvData.split('\n');
+    if (lines.length < 2) {
+      alert('CSV data must have at least a header row and one data row.');
+      return;
+    }
+    
+    // Parse header
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'source', 'notes'];
+    
+    // Check if headers match
+    const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+    if (missingHeaders.length > 0) {
+      alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nExpected: ${expectedHeaders.join(', ')}`);
+      return;
+    }
+    
+    let imported = 0;
+    let duplicates = 0;
+    let errors = 0;
+    
+    // Process each data row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      try {
+        const values = parseCSVLine(line);
+        if (values.length !== headers.length) {
+          console.warn(`Row ${i + 1}: Column count mismatch`);
+          errors++;
+          continue;
+        }
+        
+        // Create job object
+        const job = {
+          id: generateId(),
+          company: values[headers.indexOf('company')] || '',
+          role: values[headers.indexOf('role')] || '',
+          location: values[headers.indexOf('location')] || '',
+          salary: values[headers.indexOf('salary')] || '',
+          url: values[headers.indexOf('url')] || '',
+          source: values[headers.indexOf('source')] || 'CSV Import',
+          notes: values[headers.indexOf('notes')] || '',
+          status: 'applied',
+          dateApplied: new Date().toISOString(),
+          priority: 'medium',
+          createdAt: new Date().toISOString()
+        };
+        
+        // Check for duplicates
+        const isDuplicate = state.applications.some(app => 
+          app.company.toLowerCase() === job.company.toLowerCase() && 
+          app.role.toLowerCase() === job.role.toLowerCase()
+        );
+        
+        if (isDuplicate) {
+          duplicates++;
+        } else {
+          state.applications.push(job);
+          imported++;
+        }
+        
+      } catch (error) {
+        console.error(`Error processing row ${i + 1}:`, error);
+        errors++;
+      }
+    }
+    
+    // Save and update UI
+    saveToFirebase();
+    renderApplications();
+    closeCSVImport();
+    
+    // Show results
+    let message = `✅ Import Complete!\n\n📥 Imported: ${imported} jobs\n`;
+    if (duplicates > 0) message += `🔄 Duplicates: ${duplicates} jobs\n`;
+    if (errors > 0) message += `❌ Errors: ${errors} rows\n`;
+    
+    alert(message);
+    
+  } catch (error) {
+    console.error('CSV import error:', error);
+    alert('Error importing CSV data: ' + error.message);
+  }
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim());
+  return result;
 }
 
 function updateSheetsUI() {

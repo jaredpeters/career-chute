@@ -4,6 +4,28 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.3.0] - 2025-10-08
+
+### 🚀 MAJOR FEATURE: CSV Import for Claude Chat Workflow
+- **CSV Import Modal**: New "Import CSV" button in Google Sheets section
+- **Claude Chat Integration**: Pre-built prompt for Claude to extract job data
+- **Bulk Job Import**: Import multiple jobs at once from structured CSV
+- **Duplicate Detection**: Automatically detects and skips duplicate jobs
+- **Smart Parsing**: Handles quoted CSV fields and various formats
+- **Error Handling**: Shows detailed import results (imported/duplicates/errors)
+
+### 💡 Workflow
+1. Copy job listings from emails, job boards, etc.
+2. Paste into Claude chat with provided prompt
+3. Copy CSV output from Claude
+4. Import directly into your application pipeline
+
+### 🎯 Benefits
+- **100% Accurate**: Claude extracts data better than regex parsing
+- **Bulk Processing**: Handle multiple jobs at once
+- **Any Source**: Works with emails, job boards, LinkedIn, etc.
+- **Structured Data**: Consistent format for all job listings
+
 ## [3.2.4] - 2025-10-08
 
 ### 🔧 ADDED
