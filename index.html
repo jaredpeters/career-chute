@@ -1405,6 +1405,28 @@ progress::-webkit-progress-value {
   </div>
   
   <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line);">
+    <h3 style="margin-bottom: 16px;">📊 Google Sheets Integration</h3>
+    <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">
+      Automatically sync your job queue to a Google Sheet for easy tracking
+    </p>
+    
+    <div style="background: var(--panel); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+      <div id="sheetsStatus" style="margin-bottom: 12px;">
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Status:</div>
+        <div id="sheetsStatusText" style="font-size: 14px; color: var(--muted);">Not configured</div>
+      </div>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button onclick="initializeSpreadsheet()" class="modern-button primary" title="Create a new Google Sheet for your job applications" style="height: 36px; padding: 0 16px; font-size: 13px;">Create Spreadsheet</button>
+        <button onclick="syncToGoogleSheets()" class="modern-button secondary" title="Sync all jobs to your Google Sheet" style="height: 36px; padding: 0 16px; font-size: 13px;">Sync Now</button>
+        <button onclick="openSpreadsheet()" id="openSheetBtn" class="modern-button secondary" title="Open your spreadsheet in a new tab" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Open Sheet</button>
+      </div>
+      
+      <div id="sheetsLastSync" style="margin-top: 12px; font-size: 12px; color: var(--muted);"></div>
+    </div>
+  </div>
+  
+  <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line);">
     <h3 style="margin-bottom: 16px;">📧 Email Integration</h3>
     <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">
       Automatically scan Gmail for job alerts from LinkedIn and Indeed
@@ -1859,6 +1881,13 @@ let state = {
     clientId: '',
     accessToken: null,
     tokenExpiry: null,
+  },
+  sheets: {
+    enabled: false,
+    spreadsheetId: null,
+    spreadsheetUrl: null,
+    lastSync: null,
+    autoSync: true,
     lastScanTime: null,
     lastScanResults: { added: 0, duplicates: 0, emailsProcessed: 0 }
   }
@@ -5069,6 +5098,9 @@ function renderSettings() {
     document.getElementById('gmailClientId').value = state.gmail.clientId || '';
     updateGmailUI();
   }
+  
+  // Update Google Sheets UI
+  updateSheetsUI();
 }
 
 // Gmail Integration Functions
@@ -5195,9 +5227,12 @@ function initGoogleAPI() {
   return new Promise((resolve, reject) => {
     gapi.load('client:auth2', () => {
       const config = {
-        discoveryDocs: ['https://gmail.googleapis.com/$discovery/rest?version=v1'],
+        discoveryDocs: [
+          'https://gmail.googleapis.com/$discovery/rest?version=v1',
+          'https://sheets.googleapis.com/$discovery/rest?version=v4'
+        ],
         clientId: state.gmail.clientId,
-        scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
+        scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/spreadsheets'
       };
       
       // Add redirect URI if available
@@ -5526,6 +5561,158 @@ function getScoreColor(score) {
   return 'var(--bad)';
 }
 
+// Google Sheets Integration Functions
+async function initializeSpreadsheet() {
+  if (!state.gmail.connected) {
+    alert('Please connect Gmail first to use Google Sheets');
+    return;
+  }
+  
+  try {
+    // Check if spreadsheet already exists
+    if (state.sheets.spreadsheetId) {
+      const response = await gapi.client.sheets.spreadsheets.get({
+        spreadsheetId: state.sheets.spreadsheetId
+      });
+      console.log('Existing spreadsheet found:', response.result.properties.title);
+      return state.sheets.spreadsheetId;
+    }
+    
+    // Create new spreadsheet
+    const response = await gapi.client.sheets.spreadsheets.create({
+      properties: {
+        title: 'Career Chute - Job Applications'
+      },
+      sheets: [{
+        properties: {
+          title: 'Job Queue',
+          gridProperties: {
+            frozenRowCount: 1
+          }
+        }
+      }]
+    });
+    
+    const spreadsheetId = response.result.spreadsheetId;
+    const spreadsheetUrl = response.result.spreadsheetUrl;
+    
+    state.sheets.spreadsheetId = spreadsheetId;
+    state.sheets.spreadsheetUrl = spreadsheetUrl;
+    state.sheets.enabled = true;
+    
+    // Add header row
+    await gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId,
+      range: 'Job Queue!A1:L1',
+      valueInputOption: 'RAW',
+      resource: {
+        values: [[
+          'Company',
+          'Role',
+          'Match Score',
+          'Priority',
+          'Salary',
+          'Location',
+          'Status',
+          'Added to Queue',
+          'Added to Pipeline',
+          'Application Sent',
+          'Notes',
+          'URL'
+        ]]
+      }
+    });
+    
+    saveToFirebase();
+    console.log('Spreadsheet created:', spreadsheetUrl);
+    alert(`Spreadsheet created!\n\nOpen it here:\n${spreadsheetUrl}`);
+    
+    return spreadsheetId;
+  } catch (error) {
+    console.error('Error initializing spreadsheet:', error);
+    alert('Failed to create spreadsheet: ' + (error.result?.error?.message || error.message));
+  }
+}
+
+async function syncToGoogleSheets() {
+  if (!state.gmail.connected) {
+    alert('Please connect Gmail first');
+    return;
+  }
+  
+  try {
+    // Initialize spreadsheet if needed
+    if (!state.sheets.spreadsheetId) {
+      await initializeSpreadsheet();
+    }
+    
+    // Prepare data rows
+    const rows = state.applications.map(app => [
+      app.company || '',
+      app.role || '',
+      app.matchScore || calculateJobScore(app),
+      app.priority || getJobPriority(app),
+      app.salary || '',
+      app.location || '',
+      app.status || 'queued',
+      app.addedToQueue || '',
+      app.addedToPipeline || '',
+      app.appliedDate || '',
+      app.notes || '',
+      app.url || ''
+    ]);
+    
+    // Update spreadsheet
+    await gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId: state.sheets.spreadsheetId,
+      range: 'Job Queue!A2:L' + (rows.length + 1),
+      valueInputOption: 'RAW',
+      resource: {
+        values: rows
+      }
+    });
+    
+    state.sheets.lastSync = new Date().toISOString();
+    saveToFirebase();
+    
+    console.log('Synced', rows.length, 'jobs to Google Sheets');
+    alert(`✅ Synced ${rows.length} jobs to Google Sheets!`);
+  } catch (error) {
+    console.error('Error syncing to Google Sheets:', error);
+    alert('Failed to sync: ' + (error.result?.error?.message || error.message));
+  }
+}
+
+function openSpreadsheet() {
+  if (state.sheets.spreadsheetUrl) {
+    window.open(state.sheets.spreadsheetUrl, '_blank');
+  } else {
+    alert('No spreadsheet configured yet. Click "Create Spreadsheet" first.');
+  }
+}
+
+function updateSheetsUI() {
+  const statusText = document.getElementById('sheetsStatusText');
+  const openBtn = document.getElementById('openSheetBtn');
+  const lastSyncEl = document.getElementById('sheetsLastSync');
+  
+  if (state.sheets.enabled && state.sheets.spreadsheetId) {
+    statusText.textContent = '✅ Connected';
+    statusText.style.color = 'var(--ok)';
+    if (openBtn) openBtn.style.display = 'inline-block';
+    
+    if (state.sheets.lastSync && lastSyncEl) {
+      const lastSync = new Date(state.sheets.lastSync);
+      lastSyncEl.textContent = `Last synced: ${lastSync.toLocaleString()}`;
+    }
+  } else {
+    statusText.textContent = 'Not configured';
+    statusText.style.color = 'var(--muted)';
+    if (openBtn) openBtn.style.display = 'none';
+    if (lastSyncEl) lastSyncEl.textContent = '';
+  }
+}
+
 function scanJobAlerts() {
   if (!state.gmail.connected) {
     alert('Please connect Gmail first');
@@ -5572,6 +5759,11 @@ function addSelectedToPipeline() {
   saveToFirebase();
   renderJobQueue();
   renderPlanScreen();
+  
+  // Auto-sync to Google Sheets if enabled
+  if (state.sheets.enabled && state.sheets.autoSync) {
+    syncToGoogleSheets().catch(err => console.warn('Auto-sync failed:', err));
+  }
   
   alert(`${selectedJobs.length} job(s) added to your Applications Pipeline!`);
 }
