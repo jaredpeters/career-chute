@@ -4,6 +4,21 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.3.2] - 2025-10-08
+
+### 🚀 ADDED: CSV Import in Add Application Modal
+- **CSV Text Input**: Added to "Add New Application" modal on Plan page
+- **Direct Import**: Paste CSV from Claude chat directly into modal
+- **Bulk Import**: Import multiple jobs at once from Plan page
+- **Same Validation**: Uses same CSV parsing logic as Settings import
+- **Modal Layout**: Clean separation between CSV import and manual entry
+
+### 💡 Workflow Enhancement
+- **Plan Page**: Click "+ Add New Application" → Paste CSV → Import
+- **Settings Page**: Still available for bulk imports
+- **Dual Options**: CSV import OR manual entry in same modal
+- **Consistent Experience**: Same CSV format works everywhere
+
 ## [3.3.1] - 2025-10-08
 
 ### 🔧 ENHANCED: Benefits Column & Optimized Display

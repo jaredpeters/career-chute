@@ -1783,8 +1783,23 @@ Text to parse:</textarea>
 
 <!-- Add Application Modal -->
 <div id="addAppModal" class="modal-overlay">
-  <div class="modal">
+  <div class="modal" style="max-width: 600px;">
     <h2>Add New Application</h2>
+    
+    <!-- CSV Import Section -->
+    <div style="background: var(--panel); padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--line);">
+      <h3 style="margin: 0 0 12px 0; font-size: 16px; color: var(--text);">📊 Import from CSV (Claude Chat)</h3>
+      <p style="margin: 0 0 12px 0; font-size: 12px; color: var(--muted);">Paste CSV data from your Claude chat to import multiple jobs at once</p>
+      <textarea id="csvImportText" placeholder="Paste CSV data here (company,role,location,salary,url,benefits,source,notes)..." style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px; resize: vertical;"></textarea>
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <button onclick="importFromCSVText()" class="modern-button primary" style="height: 32px; padding: 0 12px; font-size: 12px;">Import CSV</button>
+        <button onclick="clearCSVText()" class="modern-button secondary" style="height: 32px; padding: 0 12px; font-size: 12px;">Clear</button>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin: 16px 0; color: var(--muted); font-size: 12px;">OR</div>
+    
+    <!-- Manual Entry Section -->
     <div class="form-group">
       <label>Company Name</label>
       <input type="text" id="newAppCompany" placeholder="Acme Corp">
@@ -2039,7 +2054,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.3.1'; // Add benefits column and optimize display layout
+const APP_VERSION = '3.3.2'; // Add CSV import to Add Application modal
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -6705,6 +6720,109 @@ function parseCSVLine(line) {
   
   result.push(current.trim());
   return result;
+}
+
+// CSV Import from Add Application Modal
+function importFromCSVText() {
+  const csvData = document.getElementById('csvImportText').value.trim();
+  
+  if (!csvData) {
+    alert('Please paste CSV data first.');
+    return;
+  }
+  
+  try {
+    const lines = csvData.split('\n');
+    if (lines.length < 2) {
+      alert('CSV data must have at least a header row and one data row.');
+      return;
+    }
+    
+    // Parse header
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'benefits', 'source', 'notes'];
+    
+    // Check if headers match
+    const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+    if (missingHeaders.length > 0) {
+      alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nExpected: ${expectedHeaders.join(', ')}`);
+      return;
+    }
+    
+    let imported = 0;
+    let duplicates = 0;
+    let errors = 0;
+    
+    // Process each data row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      try {
+        const values = parseCSVLine(line);
+        if (values.length !== headers.length) {
+          console.warn(`Row ${i + 1}: Column count mismatch`);
+          errors++;
+          continue;
+        }
+        
+        // Create job object
+        const job = {
+          id: generateId(),
+          company: values[headers.indexOf('company')] || '',
+          role: values[headers.indexOf('role')] || '',
+          location: values[headers.indexOf('location')] || '',
+          salary: values[headers.indexOf('salary')] || '',
+          url: values[headers.indexOf('url')] || '',
+          benefits: values[headers.indexOf('benefits')] || '',
+          source: values[headers.indexOf('source')] || 'CSV Import',
+          notes: values[headers.indexOf('notes')] || '',
+          status: 'applied',
+          dateApplied: new Date().toISOString(),
+          priority: 'medium',
+          createdAt: new Date().toISOString()
+        };
+        
+        // Check for duplicates
+        const isDuplicate = state.applications.some(app => 
+          app.company.toLowerCase() === job.company.toLowerCase() && 
+          app.role.toLowerCase() === job.role.toLowerCase()
+        );
+        
+        if (isDuplicate) {
+          duplicates++;
+        } else {
+          state.applications.push(job);
+          imported++;
+        }
+        
+      } catch (error) {
+        console.error(`Error processing row ${i + 1}:`, error);
+        errors++;
+      }
+    }
+    
+    // Save and update UI
+    saveToFirebase();
+    renderPlanScreen();
+    closeModal('addAppModal');
+    clearCSVText();
+    
+    // Show results
+    let message = `✅ Import Complete!\n\n📥 Imported: ${imported} jobs\n`;
+    if (duplicates > 0) message += `🔄 Duplicates: ${duplicates} jobs\n`;
+    if (errors > 0) message += `❌ Errors: ${errors} rows\n`;
+    
+    alert(message);
+    
+  } catch (error) {
+    console.error('CSV import error:', error);
+    alert('Error importing CSV data: ' + error.message);
+  }
+}
+
+function clearCSVText() {
+  document.getElementById('csvImportText').value = '';
 }
 
 function updateSheetsUI() {
