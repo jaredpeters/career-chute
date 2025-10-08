@@ -8276,7 +8276,13 @@ async function loadMappingTrainingData() {
       return;
     }
     
-    container.innerHTML = '<h3>Email Parsing Training</h3>';
+    container.innerHTML = `
+      <div style="background: var(--ok); color: white; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+        <h3 style="margin: 0 0 8px 0;">🎯 Training Purpose</h3>
+        <p style="margin: 0; font-size: 14px;">Review how emails are being parsed and correct any mistakes. This helps the system learn and improve accuracy for future job alerts.</p>
+      </div>
+      <h3>📧 Email Parsing Training</h3>
+    `;
     
     for (let i = 0; i < Math.min(messages.length, 5); i++) {
       const message = await gapi.client.gmail.users.messages.get({
@@ -8299,50 +8305,58 @@ async function loadMappingTrainingData() {
       }
       
       // Parse with current system
+      console.log('Parsing email:', { subject, from, bodyLength: body.length });
       const parsed = mapEmailFields(subject, body, from);
+      console.log('Parsed result:', parsed);
       
       // Create training interface
       const trainingCard = document.createElement('div');
       trainingCard.style.cssText = 'background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px;';
       
       trainingCard.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
           <div>
-            <h4 style="margin: 0 0 8px 0;">Original Email</h4>
-            <div style="background: var(--bg); padding: 12px; border-radius: 4px; font-size: 12px;">
-              <strong>From:</strong> ${from}<br>
-              <strong>Subject:</strong> ${subject}<br>
-              <strong>Body:</strong><br>
-              <div style="max-height: 100px; overflow-y: auto; white-space: pre-wrap;">${body.substring(0, 500)}...</div>
+            <h4 style="margin: 0 0 8px 0;">📧 Original Email</h4>
+            <div style="background: var(--bg); padding: 12px; border-radius: 4px; font-size: 12px; border: 1px solid var(--line);">
+              <div style="margin-bottom: 8px;"><strong>From:</strong> ${from}</div>
+              <div style="margin-bottom: 8px;"><strong>Subject:</strong> ${subject}</div>
+              <div><strong>Body:</strong></div>
+              <div style="max-height: 120px; overflow-y: auto; white-space: pre-wrap; margin-top: 4px; padding: 8px; background: var(--panel); border-radius: 4px;">${body.substring(0, 800)}${body.length > 800 ? '...' : ''}</div>
             </div>
           </div>
           <div>
-            <h4 style="margin: 0 0 8px 0;">Current Parsing</h4>
-            <div style="display: grid; gap: 8px;">
+            <h4 style="margin: 0 0 12px 0;">🔧 Current Parsing Results</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
               <div>
-                <label style="font-size: 12px; color: var(--muted);">Company:</label>
-                <input type="text" value="${parsed.company}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'company', this.value)">
+                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Company:</label>
+                <input type="text" value="${parsed.company}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'company', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted);">Role:</label>
-                <input type="text" value="${parsed.role}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'role', this.value)">
+                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Role:</label>
+                <input type="text" value="${parsed.role}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'role', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted);">Location:</label>
-                <input type="text" value="${parsed.location}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'location', this.value)">
+                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Location:</label>
+                <input type="text" value="${parsed.location}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'location', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted);">Salary:</label>
-                <input type="text" value="${parsed.salary}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'salary', this.value)">
+                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Salary:</label>
+                <input type="text" value="${parsed.salary}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'salary', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted);">Source:</label>
-                <input type="text" value="${parsed.source}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'source', this.value)">
+                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Source:</label>
+                <input type="text" value="${parsed.source}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'source', this.value)">
               </div>
             </div>
-            <button onclick="saveTrainingCorrection(${i})" style="background: var(--accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 12px;">
-              Save Correction
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button onclick="saveTrainingCorrection(${i})" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 14px;">
+                💾 Save Correction
+              </button>
+              <button onclick="testParsingForEmail(${i})" class="modern-button secondary" style="height: 36px; padding: 0 16px; font-size: 14px;">
+                🔄 Re-parse
+              </button>
+              <span style="font-size: 12px; color: var(--muted);">This helps improve future parsing accuracy</span>
+            </div>
           </div>
         </div>
       `;
@@ -8359,6 +8373,13 @@ async function loadMappingTrainingData() {
 function updateParsedField(index, field, value) {
   // This would update the parsed data for training
   console.log(`Updating field ${field} to ${value} for email ${index}`);
+}
+
+// Test parsing for a specific email
+function testParsingForEmail(index) {
+  console.log(`Testing parsing for email ${index}`);
+  // This would re-run the parsing and update the display
+  alert('Re-parsing email... This feature will be implemented to test different parsing approaches.');
 }
 
 function saveTrainingCorrection(index) {
