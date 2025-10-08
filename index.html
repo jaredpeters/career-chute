@@ -6836,11 +6836,13 @@ function mapEmailFields(subject, body, from) {
     location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
     // Remove common non-location phrases
     location = location.replace(/(package\s+to\s+support|remote|hybrid|full-time|part-time).*$/i, '').trim();
-    // Only fix truncations if they're standalone (not part of a larger location)
-    if (location === 'Angeles' && !location.includes(',')) location = 'Los Angeles';
-    if (location === 'Monica' && !location.includes(',')) location = 'Santa Monica';
-    if (location === 'Francisco' && !location.includes(',')) location = 'San Francisco';
-    if (location === 'Diego' && !location.includes(',')) location = 'San Diego';
+    // Try to find full city name in body if we have a partial city
+    if (location && location.length < 8) {
+      const fullCity = findFullCityName(location, body);
+      if (fullCity) {
+        location = fullCity;
+      }
+    }
   }
   
   if (!role || role === 'Various Roles') {
@@ -6864,11 +6866,13 @@ function mapEmailFields(subject, body, from) {
     location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
     location = location.replace(/package\s+to\s+support.*$/i, '').trim();
     
-    // Only fix truncations if they're standalone (not part of a larger location)
-    if (location === 'Angeles' && !location.includes(',')) location = 'Los Angeles';
-    if (location === 'Monica' && !location.includes(',')) location = 'Santa Monica';
-    if (location === 'Francisco' && !location.includes(',')) location = 'San Francisco';
-    if (location === 'Diego' && !location.includes(',')) location = 'San Diego';
+    // Try to find full city name in body if we have a partial city
+    if (location && location.length < 8) {
+      const fullCity = findFullCityName(location, body);
+      if (fullCity) {
+        location = fullCity;
+      }
+    }
   }
   
   if (role) {
@@ -6877,6 +6881,15 @@ function mapEmailFields(subject, body, from) {
     if (role.startsWith('a ')) role = role.substring(2);
     // Clean up common role title issues
     role = role.replace(/^\s*[a-z]\s+/, '').trim();
+    
+    // Validate role title - filter out obvious non-roles
+    if (isValidRoleTitle(role)) {
+      // Role is valid, keep it
+    } else {
+      // Role is invalid, try to extract from body or set to generic
+      const extractedRole = extractRoleFromBody(body);
+      role = extractedRole || 'Various Roles';
+    }
   }
   
   // Fallback if nothing was found
@@ -6894,6 +6907,153 @@ function mapEmailFields(subject, body, from) {
     source: source.charAt(0).toUpperCase() + source.slice(1),
     notes: `Found via ${source} job alert`
   };
+}
+
+// Helper function to find full city name from partial city in email body
+function findFullCityName(partialCity, body) {
+  if (!partialCity || !body) return null;
+  
+  // Common city truncations and their full names
+  const cityMappings = {
+    'Angeles': 'Los Angeles',
+    'Monica': 'Santa Monica',
+    'Francisco': 'San Francisco',
+    'Diego': 'San Diego',
+    'Jose': 'San Jose',
+    'Antonio': 'San Antonio',
+    'Bernardino': 'San Bernardino',
+    'Gabriel': 'San Gabriel',
+    'Rafael': 'San Rafael',
+    'Mateo': 'San Mateo',
+    'Leandro': 'San Leandro',
+    'Bruno': 'San Bruno',
+    'Carlos': 'San Carlos',
+    'Luis': 'San Luis Obispo',
+    'Marcos': 'San Marcos',
+    'Fernando': 'San Fernando',
+    'Bernardino': 'San Bernardino',
+    'Clemente': 'San Clemente',
+    'Juan': 'San Juan',
+    'Pedro': 'San Pedro',
+    'Ramon': 'San Ramon',
+    'Ysidro': 'San Ysidro'
+  };
+  
+  // Check if partial city matches a known truncation
+  if (cityMappings[partialCity]) {
+    return cityMappings[partialCity];
+  }
+  
+  // Try to find the full city name in the email body
+  const cityPatterns = [
+    // Look for "City, State" format
+    new RegExp(`([A-Z][a-z]+\\s+${partialCity}[a-z]*,\\s*[A-Z]{2})`, 'i'),
+    // Look for "City, Country" format
+    new RegExp(`([A-Z][a-z]+\\s+${partialCity}[a-z]*,\\s*[A-Z][a-z]+)`, 'i'),
+    // Look for standalone city names
+    new RegExp(`\\b([A-Z][a-z]+\\s+${partialCity}[a-z]*)\\b`, 'i')
+  ];
+  
+  for (const pattern of cityPatterns) {
+    const match = body.match(pattern);
+    if (match) {
+      return match[1].trim();
+    }
+  }
+  
+  return null;
+}
+
+// Helper function to validate if a role title is legitimate
+function isValidRoleTitle(role) {
+  if (!role || role.length < 3) return false;
+  
+  // Common non-role words that might be extracted incorrectly
+  const invalidWords = [
+    'apply', 'now', 'click', 'here', 'view', 'job', 'position', 'opening',
+    'hiring', 'company', 'location', 'salary', 'remote', 'hybrid', 'full',
+    'time', 'part', 'contract', 'temporary', 'permanent', 'benefits',
+    'package', 'support', 'various', 'roles', 'jobs', 'positions',
+    'indeed', 'linkedin', 'glassdoor', 'ziprecruiter', 'angel', 'remote',
+    'weworkremotely', 'greenhouse', 'lever', 'ats', 'hr', 'recruiter',
+    'talent', 'acquisition', 'team', 'department', 'division', 'unit',
+    'office', 'headquarters', 'branch', 'location', 'address', 'city',
+    'state', 'country', 'region', 'area', 'zone', 'district', 'county'
+  ];
+  
+  const roleLower = role.toLowerCase();
+  
+  // Check if role contains invalid words
+  for (const invalidWord of invalidWords) {
+    if (roleLower.includes(invalidWord)) {
+      return false;
+    }
+  }
+  
+  // Check if role is too generic
+  const genericRoles = ['various roles', 'multiple positions', 'open positions', 'job openings'];
+  if (genericRoles.includes(roleLower)) {
+    return false;
+  }
+  
+  // Check if role has proper capitalization (should start with capital letter)
+  if (!/^[A-Z]/.test(role)) {
+    return false;
+  }
+  
+  // Check if role contains common job title indicators
+  const jobTitleIndicators = [
+    'manager', 'specialist', 'engineer', 'director', 'analyst', 'coordinator',
+    'representative', 'advisor', 'consultant', 'executive', 'assistant',
+    'associate', 'senior', 'junior', 'lead', 'principal', 'staff',
+    'developer', 'designer', 'architect', 'administrator', 'supervisor',
+    'officer', 'agent', 'clerk', 'technician', 'operator', 'technician',
+    'scientist', 'researcher', 'writer', 'editor', 'producer', 'director',
+    'coordinator', 'facilitator', 'trainer', 'instructor', 'teacher',
+    'professor', 'researcher', 'analyst', 'strategist', 'planner'
+  ];
+  
+  const hasJobIndicator = jobTitleIndicators.some(indicator => 
+    roleLower.includes(indicator)
+  );
+  
+  return hasJobIndicator;
+}
+
+// Helper function to extract role title from email body when subject parsing fails
+function extractRoleFromBody(body) {
+  if (!body) return null;
+  
+  // Common role extraction patterns
+  const rolePatterns = [
+    // "We are looking for a [Role]"
+    /(?:looking for|seeking|hiring)\s+(?:a\s+)?([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
+    
+    // "Position: [Role]"
+    /(?:position|role|title):\s*([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
+    
+    // "[Company] is hiring a [Role]"
+    /(?:is|are)\s+hiring\s+(?:a\s+)?([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
+    
+    // "Join our team as a [Role]"
+    /(?:join our team as|become a|work as)\s+(?:a\s+)?([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
+    
+    // Generic job title patterns
+    /([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i
+  ];
+  
+  for (const pattern of rolePatterns) {
+    const match = body.match(pattern);
+    if (match) {
+      const role = match[1].trim();
+      // Validate the extracted role
+      if (isValidRoleTitle(role)) {
+        return role;
+      }
+    }
+  }
+  
+  return null;
 }
 
 function parseGenericJob(subject, body, from) {
@@ -8032,6 +8192,37 @@ function saveTrainingCorrection(index) {
   console.log(`Saving correction for email ${index}`);
   alert('Correction saved! This will help improve future parsing.');
 }
+
+// Test function for email parsing improvements
+function testEmailParsing() {
+  console.log('Testing email parsing improvements...');
+  
+  // Test 1: Partial city name resolution
+  const testBody1 = "We are hiring a Software Engineer in Los Angeles, CA. Apply now!";
+  const result1 = findFullCityName("Angeles", testBody1);
+  console.log('Test 1 - City resolution:', result1); // Should return "Los Angeles"
+  
+  // Test 2: Role title validation
+  const validRole = "Software Engineer";
+  const invalidRole = "Apply Now";
+  console.log('Test 2a - Valid role:', isValidRoleTitle(validRole)); // Should return true
+  console.log('Test 2b - Invalid role:', isValidRoleTitle(invalidRole)); // Should return false
+  
+  // Test 3: Role extraction from body
+  const testBody2 = "We are looking for a Senior Product Manager to join our team.";
+  const extractedRole = extractRoleFromBody(testBody2);
+  console.log('Test 3 - Role extraction:', extractedRole); // Should return "Senior Product Manager"
+  
+  // Test 4: Full email parsing with improvements
+  const testSubject = "Software Engineer at TechCorp in Angeles";
+  const testBody3 = "TechCorp is hiring a Software Engineer in Los Angeles, CA. Salary: $120k-150k. Apply now!";
+  const parsedEmail = mapEmailFields(testSubject, testBody3, "jobs@indeed.com");
+  console.log('Test 4 - Full parsing:', parsedEmail);
+  
+  console.log('Email parsing tests completed!');
+}
+
+</script>
 
 </body>
 </html>
