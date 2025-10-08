@@ -5893,9 +5893,10 @@ async function scanJobAlerts() {
     
     let addedCount = 0;
     let duplicateCount = 0;
+    let skippedCount = 0;
     
     // Process each message
-    for (const message of messages.slice(0, 20)) { // Limit to 20 to avoid rate limits
+    for (const message of messages.slice(0, 30)) { // Increased to 30
       const fullMessage = await gapi.client.gmail.users.messages.get({
         userId: 'me',
         id: message.id,
@@ -5905,6 +5906,8 @@ async function scanJobAlerts() {
       const jobData = parseJobEmail(fullMessage.result);
       
       if (jobData) {
+        console.log('Parsed job:', jobData.company, '-', jobData.role);
+        
         // Check for duplicates
         const isDuplicate = state.applications.some(app => 
           app.company === jobData.company && 
@@ -5926,6 +5929,9 @@ async function scanJobAlerts() {
         } else {
           duplicateCount++;
         }
+      } else {
+        skippedCount++;
+        console.log('Could not parse email:', message.id);
       }
       
       // Small delay to avoid rate limits
@@ -5950,7 +5956,13 @@ async function scanJobAlerts() {
     }
     
     // Show results
-    alert(`✅ Scan Complete!\n\n📥 Added: ${addedCount} new jobs\n🔄 Duplicates skipped: ${duplicateCount}\n📧 Emails processed: ${messages.length}`);
+    let resultsMessage = `✅ Scan Complete!\n\n📥 Added: ${addedCount} new jobs\n🔄 Duplicates: ${duplicateCount}\n📧 Emails processed: ${messages.length}`;
+    
+    if (skippedCount > 0) {
+      resultsMessage += `\n⚠️ Could not parse: ${skippedCount} emails\n\n(Check console for details)`;
+    }
+    
+    alert(resultsMessage);
     
     scanBtn.textContent = originalText;
     scanBtn.disabled = false;
@@ -5973,6 +5985,8 @@ function parseJobEmail(message) {
     const subject = headers.find(h => h.name === 'Subject')?.value || '';
     const from = headers.find(h => h.name === 'From')?.value || '';
     
+    console.log('Parsing email from:', from, '| Subject:', subject);
+    
     // Get email body
     let body = '';
     if (message.payload.body.data) {
@@ -5993,6 +6007,7 @@ function parseJobEmail(message) {
       return parseATSJob(subject, body);
     }
     
+    console.log('Email source not recognized:', from);
     return null;
   } catch (error) {
     console.error('Error parsing email:', error);
