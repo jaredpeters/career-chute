@@ -2054,7 +2054,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.3.3'; // Fix CSV parsing, success message, and User ID visibility
+const APP_VERSION = '3.3.4'; // Fix markdown code block delimiters in CSV import
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -6604,15 +6604,18 @@ function copyPrompt() {
 }
 
 function importCSVData() {
-  const csvData = document.getElementById('csvData').value.trim();
+  let csvData = document.getElementById('csvData').value.trim();
   
   if (!csvData) {
     alert('Please paste CSV data from Claude first.');
     return;
   }
   
+  // Remove markdown code block delimiters if present
+  csvData = csvData.replace(/^```csv\s*\n?/i, '').replace(/\n?```\s*$/, '');
+  
   try {
-    const lines = csvData.split('\n');
+    const lines = csvData.split('\n').filter(line => line.trim() !== '');
     if (lines.length < 2) {
       alert('CSV data must have at least a header row and one data row.');
       return;
@@ -6622,10 +6625,13 @@ function importCSVData() {
     const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'benefits', 'source', 'notes'];
     
+    console.log('Parsed headers:', headers);
+    console.log('Expected headers:', expectedHeaders);
+    
     // Check if headers match
     const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
     if (missingHeaders.length > 0) {
-      alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nExpected: ${expectedHeaders.join(', ')}`);
+      alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nExpected: ${expectedHeaders.join(', ')}\n\nFound: ${headers.join(', ')}`);
       return;
     }
     
@@ -6724,15 +6730,18 @@ function parseCSVLine(line) {
 
 // CSV Import from Add Application Modal
 function importFromCSVText() {
-  const csvData = document.getElementById('csvImportText').value.trim();
+  let csvData = document.getElementById('csvImportText').value.trim();
   
   if (!csvData) {
     alert('Please paste CSV data first.');
     return;
   }
   
+  // Remove markdown code block delimiters if present
+  csvData = csvData.replace(/^```csv\s*\n?/i, '').replace(/\n?```\s*$/, '');
+  
   try {
-    const lines = csvData.split('\n');
+    const lines = csvData.split('\n').filter(line => line.trim() !== '');
     if (lines.length < 2) {
       alert('CSV data must have at least a header row and one data row.');
       return;
@@ -6742,10 +6751,13 @@ function importFromCSVText() {
     const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'benefits', 'source', 'notes'];
     
+    console.log('Parsed headers:', headers);
+    console.log('Expected headers:', expectedHeaders);
+    
     // Check if headers match
     const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
     if (missingHeaders.length > 0) {
-      alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nExpected: ${expectedHeaders.join(', ')}`);
+      alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nExpected: ${expectedHeaders.join(', ')}\n\nFound: ${headers.join(', ')}`);
       return;
     }
     

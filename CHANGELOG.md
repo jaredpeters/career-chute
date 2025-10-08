@@ -4,6 +4,20 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.3.4] - 2025-10-08
+
+### 🛠️ FIXED: Markdown Code Block Delimiters
+- **CSV Delimiters**: Now strips ```csv and ``` from Claude's output
+- **Debug Logging**: Added console logging to troubleshoot parsing issues
+- **Better Error Messages**: Shows found vs expected headers when parsing fails
+- **Both Import Methods**: Fixed in both Settings and Add Application modal
+
+### 🔧 Technical Fixes
+- **Markdown Stripping**: Removes ```csv and ``` delimiters automatically
+- **Empty Line Filtering**: Filters out empty lines from CSV data
+- **Debug Output**: Console logs show parsed headers for troubleshooting
+- **Error Details**: More detailed error messages for debugging
+
 ## [3.3.3] - 2025-10-08
 
 ### 🛠️ CRITICAL FIXES: CSV Parsing & UI Issues
