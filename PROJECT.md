@@ -454,38 +454,56 @@ users/
 
 ---
 
-## Phase 3.6: Gmail Job Alert Integration (NEXT)
+## ✅ Phase 3.6: Gmail Job Alert Integration (COMPLETED ✓✓)
 
 Goal: Auto-scan Gmail for job alerts from Indeed/LinkedIn and add to pipeline
+**Status:** ✨ **COMPLETE!** ✨
 
-Features:
-- Gmail OAuth integration
-- Scan last 3 days of unread job alerts
-- Parse job details from email HTML (no external scraping needed)
-- Extract: title, company, location, salary, URL
-- Smart deduplication by URL
-- Auto-add to pipeline with new status "queued"
-- Manual "Scan Now" button (no auto-scheduling yet)
-- Runs in browser (no backend needed for Phase 1)
+**Features Implemented:**
+- [x] Gmail OAuth 2.0 integration with Google Identity Services
+- [x] Email scanning for job alerts from multiple sources
+- [x] Universal field mapping system (Zapier/Make.com style)
+- [x] Smart email parsing with configurable patterns
+- [x] Job prioritization system with role/city grading
+- [x] Employer and city blocking functionality
+- [x] Google Sheets integration with smart sync
+- [x] Field mapping training tool for accuracy improvement
+- [x] Bulk selection and management tools
+- [x] Email marking as read after processing
 
-New Application Fields:
-- location (string, optional)
-- salary (string, optional)  
-- source ('manual' | 'indeed' | 'linkedin')
-- addedVia ('manual' | 'email_scan')
+**New Application Fields:**
+- [x] location (string, optional)
+- [x] salary (string, optional)  
+- [x] source ('manual' | 'indeed' | 'linkedin' | 'glassdoor' | 'ziprecruiter')
+- [x] addedVia ('manual' | 'email_scan')
 
-Email Sources Monitored:
-- jobalerts-noreply@linkedin.com
-- noreply@indeed.com
+**Email Sources Monitored:**
+- [x] LinkedIn (jobs-noreply@linkedin.com)
+- [x] Indeed (alert@indeed.com, donotreply@match.indeed.com)
+- [x] Glassdoor (various domains)
+- [x] ZipRecruiter (various domains)
+- [x] Greenhouse, Lever, AngelList, Remote.co, WeWorkRemotely
 
-Technical Approach:
-- Gmail API with OAuth (gmail.readonly, gmail.modify scopes)
-- Parse email HTML directly (no ScraperAPI needed)
-- 3-day lookback window for unread emails
-- Deduplication via normalized URLs
-- Mark processed emails as read
+**Technical Implementation:**
+- [x] Gmail API with OAuth (gmail.readonly, gmail.modify scopes)
+- [x] Universal field mapper with configurable parsing patterns
+- [x] Smart data cleaning and validation
+- [x] Persistent role/city grading system
+- [x] One-way Google Sheets sync with update-by-ID strategy
+- [x] Real-time UI updates without full re-renders
+- [x] Comprehensive error handling and user feedback
 
-Status: Ready to implement
+**Advanced Features:**
+- [x] **Job Prioritization System** - Grade roles and cities (A/B/C/ungraded)
+- [x] **Employer Blocking** - Block specific companies from future imports
+- [x] **City Filtering** - Block entire cities from job alerts
+- [x] **Bulk Selection** - Select jobs by grade for batch operations
+- [x] **Field Mapping Training** - Review and correct parsing accuracy
+- [x] **Smart Sync** - Google Sheets integration preserves user changes
+- [x] **Data Persistence** - Grading rules survive queue clearing
+- [x] **Auto-reconnection** - Gmail API auto-reinitializes when needed
+
+**Status:** ✅ **COMPLETE AND PRODUCTION READY**
 
 ## 📝 Notes & Decisions
 
