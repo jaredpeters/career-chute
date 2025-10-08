@@ -5721,14 +5721,248 @@ function updateSheetsUI() {
   }
 }
 
-function scanJobAlerts() {
+async function scanJobAlerts() {
   if (!state.gmail.connected) {
     alert('Please connect Gmail first');
     return;
   }
   
-  // This will be implemented in Phase 3
-  alert('Gmail scanning will be implemented next!');
+  try {
+    // Show progress
+    const scanBtn = document.getElementById('scanEmailsBtn');
+    const originalText = scanBtn.textContent;
+    scanBtn.textContent = '🔄 Scanning...';
+    scanBtn.disabled = true;
+    
+    // Search for job alert emails from the last 7 days
+    const query = 'from:(jobs-noreply@linkedin.com OR indeed.com OR noreply@greenhouse.io OR jobs@lever.co) newer_than:7d';
+    
+    const response = await gapi.client.gmail.users.messages.list({
+      userId: 'me',
+      q: query,
+      maxResults: 50
+    });
+    
+    const messages = response.result.messages || [];
+    console.log(`Found ${messages.length} job alert emails`);
+    
+    if (messages.length === 0) {
+      alert('No job alerts found in the last 7 days.\n\nMake sure you have job alerts set up from:\n• LinkedIn\n• Indeed\n• Greenhouse\n• Lever');
+      scanBtn.textContent = originalText;
+      scanBtn.disabled = false;
+      return;
+    }
+    
+    let addedCount = 0;
+    let duplicateCount = 0;
+    
+    // Process each message
+    for (const message of messages.slice(0, 20)) { // Limit to 20 to avoid rate limits
+      const fullMessage = await gapi.client.gmail.users.messages.get({
+        userId: 'me',
+        id: message.id,
+        format: 'full'
+      });
+      
+      const jobData = parseJobEmail(fullMessage.result);
+      
+      if (jobData) {
+        // Check for duplicates
+        const isDuplicate = state.applications.some(app => 
+          app.company === jobData.company && 
+          app.role === jobData.role
+        );
+        
+        if (!isDuplicate) {
+          // Add to applications
+          const newJob = {
+            id: 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            ...jobData,
+            status: 'queued',
+            addedToQueue: new Date().toISOString(),
+            source: 'gmail_scan'
+          };
+          
+          state.applications.push(newJob);
+          addedCount++;
+        } else {
+          duplicateCount++;
+        }
+      }
+      
+      // Small delay to avoid rate limits
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Save and update UI
+    state.gmail.lastScanTime = new Date().toISOString();
+    state.gmail.lastScanResults = {
+      added: addedCount,
+      duplicates: duplicateCount,
+      emailsProcessed: messages.length
+    };
+    
+    saveToFirebase();
+    renderJobQueue();
+    updateGmailUI();
+    
+    // Auto-sync to Google Sheets
+    if (state.sheets.enabled && state.sheets.autoSync && addedCount > 0) {
+      await syncToGoogleSheets();
+    }
+    
+    // Show results
+    alert(`✅ Scan Complete!\n\n📥 Added: ${addedCount} new jobs\n🔄 Duplicates skipped: ${duplicateCount}\n📧 Emails processed: ${messages.length}`);
+    
+    scanBtn.textContent = originalText;
+    scanBtn.disabled = false;
+    
+  } catch (error) {
+    console.error('Error scanning Gmail:', error);
+    alert('Failed to scan Gmail: ' + (error.result?.error?.message || error.message));
+    
+    const scanBtn = document.getElementById('scanEmailsBtn');
+    if (scanBtn) {
+      scanBtn.textContent = 'Scan for Jobs Now';
+      scanBtn.disabled = false;
+    }
+  }
+}
+
+function parseJobEmail(message) {
+  try {
+    const headers = message.payload.headers;
+    const subject = headers.find(h => h.name === 'Subject')?.value || '';
+    const from = headers.find(h => h.name === 'From')?.value || '';
+    
+    // Get email body
+    let body = '';
+    if (message.payload.body.data) {
+      body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    } else if (message.payload.parts) {
+      const textPart = message.payload.parts.find(part => part.mimeType === 'text/plain' || part.mimeType === 'text/html');
+      if (textPart && textPart.body.data) {
+        body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      }
+    }
+    
+    // Extract job details based on source
+    if (from.includes('linkedin.com')) {
+      return parseLinkedInJob(subject, body);
+    } else if (from.includes('indeed.com')) {
+      return parseIndeedJob(subject, body);
+    } else if (from.includes('greenhouse.io') || from.includes('lever.co')) {
+      return parseATSJob(subject, body);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing email:', error);
+    return null;
+  }
+}
+
+function parseLinkedInJob(subject, body) {
+  // LinkedIn format: "Company is hiring: Job Title"
+  const match = subject.match(/(.+?)\s+is\s+hiring[:\s]+(.+)/i);
+  
+  if (match) {
+    const company = match[1].trim();
+    const role = match[2].trim();
+    
+    // Try to extract location
+    const locationMatch = body.match(/location[:\s]+([^<\n]+)/i) || 
+                         body.match(/([A-Z][a-z]+,\s*[A-Z]{2})/);
+    const location = locationMatch ? locationMatch[1].trim() : '';
+    
+    // Try to extract salary
+    const salaryMatch = body.match(/\$[\d,]+\s*-\s*\$[\d,]+/);
+    const salary = salaryMatch ? salaryMatch[0] : '';
+    
+    // Try to extract URL
+    const urlMatch = body.match(/https:\/\/www\.linkedin\.com\/jobs\/view\/\d+/);
+    const url = urlMatch ? urlMatch[0] : '';
+    
+    return {
+      company,
+      role,
+      location,
+      salary,
+      url,
+      notes: 'Found via LinkedIn job alert'
+    };
+  }
+  
+  return null;
+}
+
+function parseIndeedJob(subject, body) {
+  // Indeed format varies, try to extract from subject
+  const roleMatch = subject.match(/(.+?)\s+[-–]\s+(.+)/);
+  
+  if (roleMatch) {
+    const role = roleMatch[1].trim();
+    const company = roleMatch[2].trim();
+    
+    // Try to extract location
+    const locationMatch = body.match(/Location[:\s]+([^<\n]+)/i);
+    const location = locationMatch ? locationMatch[1].trim() : '';
+    
+    // Try to extract salary
+    const salaryMatch = body.match(/\$[\d,]+\s*-\s*\$[\d,]+/);
+    const salary = salaryMatch ? salaryMatch[0] : '';
+    
+    // Try to extract URL
+    const urlMatch = body.match(/https:\/\/www\.indeed\.com\/viewjob[^\s"<]+/);
+    const url = urlMatch ? urlMatch[0] : '';
+    
+    return {
+      company,
+      role,
+      location,
+      salary,
+      url,
+      notes: 'Found via Indeed job alert'
+    };
+  }
+  
+  return null;
+}
+
+function parseATSJob(subject, body) {
+  // ATS systems (Greenhouse, Lever) usually have cleaner formats
+  const lines = body.split('\n').map(l => l.trim()).filter(l => l);
+  
+  let company = '';
+  let role = subject;
+  let location = '';
+  let url = '';
+  
+  // Try to find company and role in body
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    if (lines[i].toLowerCase().includes('company') || lines[i].toLowerCase().includes('organization')) {
+      company = lines[i + 1] || '';
+    }
+    if (lines[i].toLowerCase().includes('position') || lines[i].toLowerCase().includes('role')) {
+      role = lines[i + 1] || role;
+    }
+    if (lines[i].toLowerCase().includes('location')) {
+      location = lines[i + 1] || '';
+    }
+  }
+  
+  // Try to extract URL
+  const urlMatch = body.match(/https?:\/\/[^\s"<]+(?:greenhouse\.io|lever\.co)[^\s"<]+/);
+  url = urlMatch ? urlMatch[0] : '';
+  
+  return {
+    company: company || 'Unknown Company',
+    role,
+    location,
+    salary: '',
+    url,
+    notes: 'Found via ATS job alert'
+  };
 }
 
 function addJobManually() {
