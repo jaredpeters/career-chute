@@ -6014,8 +6014,8 @@ async function scanJobAlerts() {
       access_token: state.gmail.accessToken
     });
     
-    // Search for job alert emails from the last 7 days
-    const query = 'from:(jobs-noreply@linkedin.com OR indeed.com OR noreply@greenhouse.io OR jobs@lever.co) newer_than:7d';
+    // Search for job alert emails from the last 7 days (expanded sources)
+    const query = 'from:(linkedin.com OR indeed.com OR glassdoor.com OR greenhouse.io OR lever.co OR ziprecruiter.com OR angel.co OR remote.co OR weworkremotely.com) subject:(job OR hiring OR position OR opportunity OR career) newer_than:7d';
     
     const response = await gapi.client.gmail.users.messages.list({
       userId: 'me',
@@ -6057,6 +6057,16 @@ async function scanJobAlerts() {
         );
         
         if (!isDuplicate) {
+          // Check if role is marked as Grade C (red) - skip these
+          const roleTitle = jobData.role.trim();
+          const grade = state.roleGrades[roleTitle];
+          
+          if (grade === 'C') {
+            console.log('Skipping Grade C job:', jobData.company, '-', jobData.role);
+            skippedCount++;
+            continue;
+          }
+          
           // Add to applications
           const newJob = {
             id: 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -6101,7 +6111,7 @@ async function scanJobAlerts() {
     let resultsMessage = `✅ Scan Complete!\n\n📥 Added: ${addedCount} new jobs\n🔄 Duplicates: ${duplicateCount}\n📧 Emails processed: ${messages.length}`;
     
     if (skippedCount > 0) {
-      resultsMessage += `\n⚠️ Could not parse: ${skippedCount} emails\n\n(Check console for details)`;
+      resultsMessage += `\n⚠️ Skipped: ${skippedCount} jobs\n(Red grades + unparseable emails)`;
     }
     
     alert(resultsMessage);
@@ -6145,6 +6155,8 @@ function parseJobEmail(message) {
       return parseLinkedInJob(subject, body);
     } else if (from.includes('indeed.com')) {
       return parseIndeedJob(subject, body);
+    } else if (from.includes('glassdoor.com')) {
+      return parseGlassdoorJob(subject, body);
     } else if (from.includes('greenhouse.io') || from.includes('lever.co')) {
       return parseATSJob(subject, body);
     }
@@ -6256,6 +6268,63 @@ function parseIndeedJob(subject, body) {
     salary,
     url,
     notes: 'Found via Indeed job alert'
+  };
+}
+
+function parseGlassdoorJob(subject, body) {
+  // Glassdoor formats:
+  // Format 1: "New Job Alert: Job Title at Company"
+  // Format 2: "Job Title at Company - Glassdoor"
+  // Format 3: "Company is hiring: Job Title"
+  
+  let role = '';
+  let company = '';
+  let location = '';
+  
+  // Try Format 1: "New Job Alert: Job Title at Company"
+  let match = subject.match(/New Job Alert[:\s]+(.+?)\s+at\s+(.+)/i);
+  if (match) {
+    role = match[1].trim();
+    company = match[2].trim();
+  } else {
+    // Try Format 2: "Job Title at Company - Glassdoor"
+    match = subject.match(/(.+?)\s+at\s+(.+?)\s*-\s*Glassdoor/i);
+    if (match) {
+      role = match[1].trim();
+      company = match[2].trim();
+    } else {
+      // Try Format 3: "Company is hiring: Job Title"
+      match = subject.match(/(.+?)\s+is\s+hiring[:\s]+(.+)/i);
+      if (match) {
+        company = match[1].trim();
+        role = match[2].trim();
+      }
+    }
+  }
+  
+  if (!role || !company) {
+    return null;
+  }
+  
+  // Try to extract location from body
+  const locationMatch = body.match(/Location[:\s]+([^<\n]+)/i);
+  location = locationMatch ? locationMatch[1].trim() : '';
+  
+  // Try to extract salary
+  const salaryMatch = body.match(/\$[\d,]+\s*-\s*\$[\d,]+/);
+  const salary = salaryMatch ? salaryMatch[0] : '';
+  
+  // Try to extract URL
+  const urlMatch = body.match(/https:\/\/www\.glassdoor\.com[^\s"<]+/);
+  const url = urlMatch ? urlMatch[0] : '';
+  
+  return {
+    company,
+    role,
+    location,
+    salary,
+    url,
+    notes: 'Found via Glassdoor job alert'
   };
 }
 
