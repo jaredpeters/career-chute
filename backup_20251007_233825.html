@@ -1270,9 +1270,11 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
-  <!-- ARCHIVED: Email scanning removed - manual entry only -->
   <!-- Job Queue Controls -->
   <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+    <button class="modern-button primary" onclick="scanJobAlerts()" title="Scan Gmail for new job postings">
+      📧 Scan Gmail for Jobs
+    </button>
     <button class="modern-button secondary" onclick="addJobManually()" title="Manually add a job to the queue">
       ➕ Add Job Manually
     </button>
@@ -1341,85 +1343,16 @@ progress::-webkit-progress-value {
 <!-- Field Mapping Training Screen -->
 <div id="mapping" class="screen">
   <div class="header">
-    <h1>Email Parser Management</h1>
-    <p style="color: var(--muted); margin-top: 8px;">Monitor and improve email parsing accuracy across all job sources</p>
+    <h1>Field Mapping Training</h1>
   </div>
-  
-  <!-- Parser Statistics Dashboard -->
   <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-    <h3 style="margin: 0 0 16px 0;">📊 Parsing Statistics</h3>
-    <div id="parserStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
-      <div style="background: var(--bg); padding: 12px; border-radius: 8px; text-align: center;">
-        <div style="font-size: 24px; font-weight: 700; color: var(--accent);" id="totalEmailsProcessed">0</div>
-        <div style="font-size: 12px; color: var(--muted);">Emails Processed</div>
-      </div>
-      <div style="background: var(--bg); padding: 12px; border-radius: 8px; text-align: center;">
-        <div style="font-size: 24px; font-weight: 700; color: var(--ok);" id="parsingAccuracy">0%</div>
-        <div style="font-size: 12px; color: var(--muted);">Accuracy Rate</div>
-      </div>
-      <div style="background: var(--bg); padding: 12px; border-radius: 8px; text-align: center;">
-        <div style="font-size: 24px; font-weight: 700; color: var(--warn);" id="correctionsMade">0</div>
-        <div style="font-size: 12px; color: var(--muted);">Corrections Made</div>
-      </div>
-      <div style="background: var(--bg); padding: 12px; border-radius: 8px; text-align: center;">
-        <div style="font-size: 24px; font-weight: 700; color: var(--accent);" id="lastScanTime">Never</div>
-        <div style="font-size: 12px; color: var(--muted);">Last Scan</div>
-      </div>
-    </div>
-    <button onclick="loadMappingTrainingData()" class="modern-button primary" style="height: 36px; padding: 0 16px;">
-      📧 Load Recent Emails for Training
+    <h3 style="margin: 0 0 16px 0;">Train the Parser</h3>
+    <p style="margin: 0 0 16px 0; color: var(--muted);">Review and correct how emails are being parsed to improve accuracy.</p>
+    <button onclick="loadMappingTrainingData()" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+      Load Recent Emails for Training
     </button>
   </div>
   
-  <!-- Parser Rules Explanation -->
-  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-    <h3 style="margin: 0 0 16px 0;">🔧 Parser Rules & Logic</h3>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-      <!-- Subject Line Patterns -->
-      <div>
-        <h4 style="margin: 0 0 12px 0; color: var(--accent);">📝 Subject Line Patterns</h4>
-        <div style="background: var(--bg); padding: 12px; border-radius: 8px; font-size: 13px;">
-          <div style="margin-bottom: 8px;"><strong>LinkedIn:</strong> "Role at Company in Location"</div>
-          <div style="margin-bottom: 8px;"><strong>Indeed:</strong> "Company for Role" or "Role @ Company"</div>
-          <div style="margin-bottom: 8px;"><strong>Glassdoor:</strong> "Company1, Company2 in Location"</div>
-          <div style="margin-bottom: 8px;"><strong>Generic:</strong> "Company is hiring" or "Various Roles"</div>
-        </div>
-      </div>
-      
-      <!-- Body Extraction -->
-      <div>
-        <h4 style="margin: 0 0 12px 0; color: var(--accent);">📄 Body Extraction</h4>
-        <div style="background: var(--bg); padding: 12px; border-radius: 8px; font-size: 13px;">
-          <div style="margin-bottom: 8px;"><strong>Company:</strong> "at Company" or "@ Company" patterns</div>
-          <div style="margin-bottom: 8px;"><strong>Role:</strong> Job title keywords (Manager, Engineer, etc.)</div>
-          <div style="margin-bottom: 8px;"><strong>Location:</strong> "City, State" format detection</div>
-          <div style="margin-bottom: 8px;"><strong>Salary:</strong> "$X-Y" or "$X to $Y" patterns</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Advanced Features -->
-    <div>
-      <h4 style="margin: 0 0 12px 0; color: var(--accent);">⚡ Advanced Features</h4>
-      <div style="background: var(--bg); padding: 12px; border-radius: 8px; font-size: 13px;">
-        <div style="margin-bottom: 8px;"><strong>City Resolution:</strong> "Angeles" → "Los Angeles" (partial city name expansion)</div>
-        <div style="margin-bottom: 8px;"><strong>Role Validation:</strong> Filters out non-job words like "Apply Now", "Click Here"</div>
-        <div style="margin-bottom: 8px;"><strong>Fallback Extraction:</strong> Extracts roles from body when subject parsing fails</div>
-        <div style="margin-bottom: 8px;"><strong>Source Detection:</strong> Identifies job board from email domain</div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Source-Specific Rules -->
-  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-    <h3 style="margin: 0 0 16px 0;">🎯 Source-Specific Rules</h3>
-    <div id="sourceRules" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
-      <!-- Rules will be populated by JavaScript -->
-    </div>
-  </div>
-  
-  <!-- Training Interface -->
   <div id="mappingTrainingContainer">
     <!-- Training data will be populated here -->
   </div>
@@ -1430,18 +1363,6 @@ progress::-webkit-progress-value {
   <div class="header">
     <h1>Settings</h1>
     <div class="subtitle">Customize your goals and preferences</div>
-  </div>
-  
-  <!-- Version Info -->
-  <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); font-weight: 600;">v<span id="app-version"></span></span>
-      <span style="font-size: 12px; color: var(--muted);">•</span>
-      <span style="font-size: 12px; color: var(--muted);">Build: <span id="app-build-date"></span></span>
-    </div>
-    <div style="font-size: 11px; color: var(--muted);">
-      <span id="version-status">Loading...</span>
-    </div>
   </div>
   
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px;">
@@ -1571,9 +1492,42 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
-  <!-- ARCHIVED: Gmail Integration - Removed due to unreliable parsing -->
-  <!-- See archived/EMAIL_PARSING_CODE_ARCHIVE.md for details -->
-  <!-- Future: Consider Safari extension for direct DOM access -->
+  <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line);">
+    <h3 style="margin-bottom: 16px;">📧 Email Integration</h3>
+    <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">
+      Automatically scan Gmail for job alerts from LinkedIn and Indeed
+    </p>
+    
+    <div style="background: var(--panel); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+      <div class="form-group" style="margin-bottom: 12px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+          <button class="modern-button secondary" onclick="loadOAuthConfig('netlify')" title="Configure OAuth for Netlify deployment" style="height: 32px; padding: 0 12px; font-size: 12px;">Netlify</button>
+          <button class="modern-button secondary" onclick="loadOAuthConfig('localhost')" title="Configure OAuth for local testing" style="height: 32px; padding: 0 12px; font-size: 12px;">Localhost</button>
+          <button class="modern-button secondary" onclick="testOAuthConfig()" title="Check your OAuth configuration" style="height: 32px; padding: 0 12px; font-size: 12px;">Test Config</button>
+          <button class="modern-button secondary" onclick="resetGmailAPI()" title="Reset Gmail connection and clear errors" style="height: 32px; padding: 0 12px; font-size: 12px;">Reset API</button>
+        </div>
+        <input type="text" id="gmailClientId" placeholder="Your Google OAuth Client ID" oninput="handleGmailClientIdChange(this.value)" style="display: none; width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
+      </div>
+      
+      <div id="gmailConnectionStatus" style="margin-bottom: 12px;">
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Status:</div>
+        <div id="gmailStatusText" style="font-size: 14px; color: var(--muted);">Not connected</div>
+      </div>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button id="connectGmailBtn" onclick="connectGmail()" class="modern-button primary" title="Authorize access to scan your Gmail for job postings" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Connect Gmail</button>
+        <button id="disconnectGmailBtn" onclick="disconnectGmail()" class="modern-button secondary" title="Revoke Gmail access and disconnect" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Disconnect</button>
+        <button id="scanEmailsBtn" onclick="scanJobAlerts()" class="modern-button primary" title="Scan Gmail for new job postings from LinkedIn and Indeed" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Scan for Jobs Now</button>
+      </div>
+      
+      <div id="gmailLastScan" style="margin-top: 12px;"></div>
+      
+      <div id="lastScanInfo" style="margin-top: 12px; font-size: 12px; color: var(--muted); display: none;">
+        <div id="lastScanTime"></div>
+        <div id="lastScanResults"></div>
+      </div>
+    </div>
+  </div>
   
   <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line); margin-bottom: 100px;">
     <h3 style="margin-bottom: 16px;">Data Management</h3>
@@ -1833,9 +1787,17 @@ progress::-webkit-progress-value {
     📋
     <span>Plan</span>
   </button>
+  <button class="nav-btn" onclick="showScreen('jobs')">
+    📥
+    <span>Job Queue</span>
+  </button>
   <button class="nav-btn" onclick="showScreen('progress')">
     📊
     <span>Progress</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('mapping')">
+    🔧
+    <span>Mapping</span>
   </button>
   <button class="nav-btn" onclick="showScreen('settings')">
     ⚙️
@@ -1962,13 +1924,9 @@ let userId = SHARED_USER_ID;
 // Always use the shared User ID
 localStorage.setItem('career_chute_user_id', userId);
 
-// App Version
-const APP_VERSION = '3.2.0'; // Cleaned up: Archived email parsing, back to manual workflow
-const APP_BUILD_DATE = '2025-10-08';
-
 // State
 let state = {
-  version: APP_VERSION,
+  version: '3.0.0',
   weekStart: null,
   targets: { apps: 15, networking: 10, events: 1 },
   applications: [],
@@ -2213,12 +2171,8 @@ function saveToFirebase() {
   
   try {
     updateSyncStatus('syncing', 'Saving...');
-    
-    // Filter out emailParsers (contains RegExp objects that can't be serialized)
-    const { emailParsers, ...saveableState } = state;
-    
     db.collection('users').doc(userId).set({
-      ...saveableState,
+      ...state,
       lastUpdated: new Date().toISOString()
     }).then(() => {
       updateSyncStatus('synced', 'Synced');
@@ -2226,14 +2180,12 @@ function saveToFirebase() {
     }).catch(error => {
       console.error('Save error:', error);
       updateSyncStatus('error', 'Error');
-      localStorage.setItem('career_chute_backup', JSON.stringify(saveableState));
+      localStorage.setItem('career_chute_backup', JSON.stringify(state));
     });
   } catch (error) {
     console.error('Save error:', error);
     updateSyncStatus('error', 'Error');
-    // Save saveable state to localStorage (without RegExp objects)
-    const { emailParsers, ...saveableState } = state;
-    localStorage.setItem('career_chute_backup', JSON.stringify(saveableState));
+    localStorage.setItem('career_chute_backup', JSON.stringify(state));
   }
 }
 
@@ -2399,14 +2351,11 @@ function setupRealtimeSync() {
     updateSyncStatus('error', 'Sync Setup Error');
   }
   
-  // Set up periodic Gmail token expiry check and UI update
+  // Set up periodic Gmail token expiry check
   if (state.gmail && state.gmail.connected) {
     setInterval(() => {
       checkTokenExpiry();
-      updateGmailUI(); // Update UI to show current token time remaining
     }, 60000); // Check every minute
-    
-    console.log('Gmail token monitoring started - will check every minute');
   }
 }
 
@@ -2432,8 +2381,7 @@ function showScreen(screenId) {
     renderJobQueue();
   }
   if (screenId === 'mapping') {
-    // Initialize parser statistics and rules
-    initParserStats();
+    // Mapping screen doesn't need special rendering
   }
   if (screenId === 'settings') renderSettings();
 }
@@ -4738,24 +4686,8 @@ function isOnTrack() {
 }
 
 // App initialization
-// Display app version info
-function displayVersionInfo() {
-  const versionEl = document.getElementById('app-version');
-  const buildDateEl = document.getElementById('app-build-date');
-  const statusEl = document.getElementById('version-status');
-  
-  if (versionEl) versionEl.textContent = APP_VERSION;
-  if (buildDateEl) buildDateEl.textContent = APP_BUILD_DATE;
-  if (statusEl) statusEl.textContent = '✓ Up to date';
-  
-  console.log(`🚀 Career Chute v${APP_VERSION} (${APP_BUILD_DATE})`);
-}
-
 async function initializeApp() {
   console.log('Initializing Career Chute...');
-  
-  // Display version info
-  displayVersionInfo();
   
   // Show loading state
   updateSyncStatus('syncing', 'Starting...');
@@ -5653,58 +5585,7 @@ function disconnectGmail() {
   console.log('Gmail disconnected');
 }
 
-async function refreshGmailToken() {
-  if (!state.gmail.accessToken || !state.gmail.tokenExpiry) {
-    throw new Error('No token to refresh');
-  }
-  
-  // Check if token is actually expired (allow small buffer for in-flight requests)
-  if (Date.now() < state.gmail.tokenExpiry - 60000) { // 1 minute buffer
-    console.log('Token still valid, no refresh needed');
-    return;
-  }
-  
-  console.log('Refreshing Gmail token...');
-  
-  // Use Google Identity Services to refresh the token
-  if (typeof google !== 'undefined' && google.accounts && tokenClient) {
-    return new Promise((resolve, reject) => {
-      // Request new token silently (no popup if user still logged in)
-      tokenClient.callback = (response) => {
-        if (response.error) {
-          console.error('Token refresh error:', response.error);
-          reject(new Error(response.error));
-          return;
-        }
-        
-        if (response.access_token) {
-          state.gmail.accessToken = response.access_token;
-          state.gmail.tokenExpiry = Date.now() + (response.expires_in * 1000);
-          
-          // Set the token for API calls
-          if (gapi && gapi.client) {
-            gapi.client.setToken({
-              access_token: response.access_token
-            });
-          }
-          
-          saveToFirebase();
-          console.log('Gmail token refreshed successfully. New expiry:', new Date(state.gmail.tokenExpiry).toLocaleTimeString());
-          resolve();
-        } else {
-          reject(new Error('No access token in response'));
-        }
-      };
-      
-      // Request token without showing popup (prompt: 'none')
-      tokenClient.requestAccessToken({ prompt: '' });
-    });
-  } else {
-    throw new Error('Google Identity Services not available for token refresh');
-  }
-}
-
-async function checkTokenExpiry() {
+function checkTokenExpiry() {
   if (!state.gmail.connected || !state.gmail.tokenExpiry) {
     return;
   }
@@ -5714,14 +5595,20 @@ async function checkTokenExpiry() {
   
   // Refresh token if it expires in less than 5 minutes
   if (timeUntilExpiry < 5 * 60 * 1000) {
-    console.log(`Token expires in ${Math.round(timeUntilExpiry / 60000)} minutes, refreshing...`);
-    try {
-      await refreshGmailToken();
-      console.log('Automatic token refresh successful');
-    } catch (error) {
-      console.error('Automatic token refresh failed:', error);
-      // Don't disconnect immediately, let user continue until actual API call fails
-      console.warn('Will attempt refresh on next API call');
+    if (typeof gapi !== 'undefined' && gapi.auth2) {
+      const authInstance = gapi.auth2.getAuthInstance();
+      if (authInstance) {
+        const googleUser = authInstance.currentUser.get();
+        googleUser.reloadAuthResponse().then(authResponse => {
+          state.gmail.accessToken = authResponse.access_token;
+          state.gmail.tokenExpiry = Date.now() + (authResponse.expires_in * 1000);
+          saveToFirebase();
+          console.log('Gmail token refreshed');
+        }).catch(error => {
+          console.error('Token refresh failed:', error);
+          disconnectGmail();
+        });
+      }
     }
   }
 }
@@ -5733,22 +5620,7 @@ function updateGmailUI() {
   const scanBtn = document.getElementById('scanEmailsBtn');
   
   if (state.gmail.connected) {
-    let statusMessage = `Connected as ${state.gmail.userEmail}`;
-    
-    // Show token expiry time for debugging
-    if (state.gmail.tokenExpiry) {
-      const timeUntilExpiry = state.gmail.tokenExpiry - Date.now();
-      const minutesLeft = Math.round(timeUntilExpiry / 60000);
-      
-      if (minutesLeft > 0) {
-        statusMessage += ` (token valid for ${minutesLeft}m)`;
-      } else {
-        statusMessage += ` (token expired!)`;
-        statusText.style.color = '#ea580c'; // Orange warning
-      }
-    }
-    
-    statusText.textContent = statusMessage;
+    statusText.textContent = `Connected as ${state.gmail.userEmail}`;
     statusText.style.color = 'var(--ok)';
     
     if (connectBtn) connectBtn.style.display = 'none';
@@ -5828,34 +5700,6 @@ function renderJobQueue() {
   container.innerHTML = tableHTML;
 }
 
-/**
- * Generate confidence indicator badge
- */
-function getConfidenceIndicator(confidence, fieldName) {
-  const colors = {
-    'high': { emoji: '🟢', bg: '#dcfce7', text: '#166534', tooltip: 'High confidence - verified from structured data' },
-    'medium': { emoji: '🟡', bg: '#fef3c7', text: '#92400e', tooltip: 'Medium confidence - extracted from patterns' },
-    'low': { emoji: '🔴', bg: '#fee2e2', text: '#991b1b', tooltip: 'Low confidence - needs review' },
-    'none': { emoji: '⚪', bg: '#f3f4f6', text: '#6b7280', tooltip: 'Not found' }
-  };
-  
-  const color = colors[confidence] || colors.none;
-  
-  return `<span 
-    style="
-      display: inline-block; 
-      font-size: 10px; 
-      padding: 2px 4px; 
-      border-radius: 3px; 
-      background: ${color.bg}; 
-      color: ${color.text};
-      margin-left: 4px;
-      cursor: help;
-    " 
-    title="${color.tooltip}"
-  >${color.emoji}</span>`;
-}
-
 function renderJobRow(job) {
   const statusColor = getStatusColor(job.status);
   const roleTitle = (job.role || '').trim();
@@ -5871,14 +5715,6 @@ function renderJobRow(job) {
   // Determine source from job data
   const source = job.source || (job.notes ? job.notes.replace('Found via ', '').replace(' job alert', '') : 'Unknown');
   
-  // Get confidence indicators if available
-  const hasMetadata = job._meta && job._meta.overallConfidence;
-  const companyConfidence = hasMetadata ? job._meta.company.confidence : 'none';
-  const roleConfidence = hasMetadata ? job._meta.role.confidence : 'none';
-  const locationConfidence = hasMetadata ? job._meta.location.confidence : 'none';
-  const salaryConfidence = hasMetadata ? job._meta.salary.confidence : 'none';
-  const overallConfidence = hasMetadata ? job._meta.overallConfidence : 'none';
-  
   return `
     <div style="display: grid; grid-template-columns: 30px 2.5fr 80px 100px 100px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
       <div>
@@ -5886,10 +5722,7 @@ function renderJobRow(job) {
       </div>
       <div style="min-width: 0;">
         <div style="font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
-          <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            ${job.company}
-            ${hasMetadata ? getConfidenceIndicator(companyConfidence, 'company') : ''}
-          </span>
+          <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</span>
           <button 
             onclick="blockEmployer('${job.company.replace(/'/g, "\\'")}')" 
             style="
@@ -5914,39 +5747,34 @@ function renderJobRow(job) {
             title="Block this employer (never see jobs from them again)"
           >×</button>
         </div>
-        <div style="display: flex; align-items: center; gap: 4px;">
-          <button 
-            onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
-            style="
-              background: ${roleColor.bg}; 
-              color: ${roleColor.text}; 
-              border: none; 
-              padding: 3px 8px; 
-              border-radius: 4px; 
-              font-size: 10px; 
-              cursor: pointer;
-              transition: opacity 0.2s;
-              white-space: normal;
-              word-wrap: break-word;
-              height: auto;
-              min-height: 20px;
-              display: inline-block;
-              text-align: center;
-            "
-            onmouseover="this.style.opacity='0.8'"
-            onmouseout="this.style.opacity='1'"
-            title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
-          >${job.role}</button>
-          ${hasMetadata ? getConfidenceIndicator(roleConfidence, 'role') : ''}
-        </div>
+        <button 
+          onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
+          style="
+            background: ${roleColor.bg}; 
+            color: ${roleColor.text}; 
+            border: none; 
+            padding: 3px 8px; 
+            border-radius: 4px; 
+            font-size: 10px; 
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: normal;
+            word-wrap: break-word;
+            height: auto;
+            min-height: 20px;
+            display: inline-block;
+            text-align: center;
+          "
+          onmouseover="this.style.opacity='0.8'"
+          onmouseout="this.style.opacity='1'"
+          title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+        >${job.role}</button>
       </div>
       <div style="text-align: center; color: var(--muted); font-size: 11px;">
         ${source}
-        ${hasMetadata ? `<div style="margin-top: 2px; font-size: 9px;">${getConfidenceIndicator(overallConfidence, 'overall')}</div>` : ''}
       </div>
       <div style="text-align: center; color: var(--muted); font-size: 12px;">
         ${job.salary || 'N/A'}
-        ${hasMetadata && job.salary ? getConfidenceIndicator(salaryConfidence, 'salary') : ''}
       </div>
             <div style="text-align: center;">
               ${job.location ? (() => {
@@ -5984,7 +5812,6 @@ function renderJobRow(job) {
                     onmouseout="this.style.opacity='1'"
                     title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
                   >${city}</button>
-                  ${hasMetadata ? getConfidenceIndicator(locationConfidence, 'location') : ''}
                   <button 
                     onclick="blockCity('${city.replace(/'/g, "\\'")}')" 
                     style="
@@ -6404,19 +6231,6 @@ async function scanJobAlerts() {
     return;
   }
   
-  // Check if token is expired and refresh if needed
-  if (state.gmail.tokenExpiry && Date.now() > state.gmail.tokenExpiry) {
-    console.log('Gmail token expired, attempting to refresh...');
-    try {
-      await refreshGmailToken();
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      alert('Gmail session expired. Please reconnect Gmail.');
-      disconnectGmail();
-      return;
-    }
-  }
-  
   // Make sure Gmail API is loaded
   if (!gapi || !gapi.client || !gapi.client.gmail) {
     console.log('Gmail API not ready, attempting to reinitialize...');
@@ -6482,10 +6296,6 @@ async function scanJobAlerts() {
     let addedCount = 0;
     let duplicateCount = 0;
     let skippedCount = 0;
-    let rejectedCount = 0;
-    
-    // Reset rejected listings tracker
-    window._rejectedListings = [];
     
     // Process each message
     for (const message of messages.slice(0, 30)) { // Increased to 30
@@ -6495,45 +6305,9 @@ async function scanJobAlerts() {
         format: 'full'
       });
       
-      // Try to extract multiple listings from HTML
-      const headers = fullMessage.result.payload.headers;
-      const from = headers.find(h => h.name === 'From')?.value || '';
+      const jobData = parseJobEmail(fullMessage.result);
       
-      let htmlBody = '';
-      if (fullMessage.result.payload.parts) {
-        const htmlPart = fullMessage.result.payload.parts.find(part => part.mimeType === 'text/html');
-        if (htmlPart && htmlPart.body.data) {
-          htmlBody = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-        }
-      }
-      
-      let jobListings = [];
-      if (htmlBody) {
-        jobListings = extractJobListingsFromHTML(htmlBody, headers.find(h => h.name === 'Subject')?.value || '', from);
-        
-        // Validate each listing
-        jobListings = jobListings.filter(listing => {
-          const validation = isValidListing(listing, htmlBody);
-          if (!validation.isValid) {
-            rejectedCount++;
-            return false;
-          }
-          return true;
-        });
-      }
-      
-      // If HTML extraction didn't work, fall back to standard parsing
-      if (jobListings.length === 0) {
-        const jobData = parseJobEmail(fullMessage.result);
-        if (jobData) {
-          jobListings = [jobData];
-        } else {
-          rejectedCount++; // Counted as rejected if returned null
-        }
-      }
-      
-      // Process all listings found in this email
-      for (const jobData of jobListings) {
+      if (jobData) {
         console.log('Parsed job:', jobData.company, '-', jobData.role);
         
         // Check for duplicates
@@ -6602,38 +6376,26 @@ async function scanJobAlerts() {
         } else {
           duplicateCount++;
         }
-      } // End of jobListings loop
+      } else {
+        skippedCount++;
+        console.log('Could not parse email:', message.id);
+      }
       
       // Small delay to avoid rate limits
       await new Promise(resolve => setTimeout(resolve, 100));
-    } // End of messages loop
+    }
     
     // Save and update UI
     state.gmail.lastScanTime = new Date().toISOString();
     state.gmail.lastScanResults = {
       added: addedCount,
       duplicates: duplicateCount,
-      rejected: rejectedCount,
-      skipped: skippedCount,
       emailsProcessed: messages.length
     };
-    
-    // Update parser statistics
-    if (!state.parserStats) {
-      state.parserStats = {
-        totalEmailsProcessed: 0,
-        correctionsMade: 0,
-        lastScanTime: null,
-        accuracyRate: 0
-      };
-    }
-    state.parserStats.totalEmailsProcessed += messages.length;
-    state.parserStats.lastScanTime = state.gmail.lastScanTime;
     
     saveToFirebase();
     renderJobQueue();
     updateGmailUI();
-    updateParserStats();
     
     // Auto-sync to Google Sheets
     if (state.sheets.enabled && state.sheets.autoSync && addedCount > 0) {
@@ -6657,16 +6419,8 @@ async function scanJobAlerts() {
     
     let resultsMessage = `✅ Scan Complete!\n\n📥 Added: ${addedCount} new jobs\n🔄 Duplicates: ${duplicateCount}\n📧 Emails processed: ${messages.length}`;
     
-    if (rejectedCount > 0) {
-      resultsMessage += `\n❌ Rejected: ${rejectedCount} (invalid listings)`;
-    }
-    
     if (skippedCount > 0) {
-      resultsMessage += `\n⚠️  Skipped: ${skippedCount} jobs\n\n📊 Breakdown:\n• Blocked employers: ${blockedEmployerCount}\n• Blocked cities: ${blockedCityCount}\n• Red grades: ${gradeCCount}`;
-    }
-    
-    if (rejectedCount > 0) {
-      resultsMessage += `\n\n💡 Tip: Open console to view rejected listings\n   Run: viewRejectedListings()`;
+      resultsMessage += `\n⚠️ Skipped: ${skippedCount} jobs\n\n📊 Breakdown:\n• Red grades: ${gradeCCount}\n• Blocked employers: ${blockedEmployerCount}\n• Blocked cities: ${blockedCityCount}\n• Unparseable: ${skippedCount - gradeCCount}`;
     }
     
     alert(resultsMessage);
@@ -6686,694 +6440,47 @@ async function scanJobAlerts() {
   }
 }
 
-/**
- * View rejected listings (for debugging)
- * Run in console: viewRejectedListings()
- */
-function viewRejectedListings() {
-  if (!window._rejectedListings || window._rejectedListings.length === 0) {
-    console.log('✅ No rejected listings in last scan!');
-    return;
-  }
-  
-  console.log(`\n❌ REJECTED LISTINGS (${window._rejectedListings.length})\n${'='.repeat(80)}\n`);
-  
-  window._rejectedListings.forEach((rejected, index) => {
-    console.log(`\n[${index + 1}] From: ${rejected.from}`);
-    console.log(`Subject: ${rejected.subject}`);
-    console.log(`\nExtracted Data:`);
-    console.log(`  Company: "${rejected.extracted.company}"`);
-    console.log(`  Role: "${rejected.extracted.role}"`);
-    console.log(`  Location: "${rejected.extracted.location || 'N/A'}"`);
-    console.log(`  Salary: "${rejected.extracted.salary || 'N/A'}"`);
-    console.log(`  URL: "${rejected.extracted.url || 'N/A'}"`);
-    console.log(`\nRejection Reasons:`);
-    rejected.reasons.forEach(reason => console.log(`  • ${reason}`));
-    console.log(`\n${'-'.repeat(80)}`);
-  });
-  
-  console.log(`\n💡 To export rejected listings:\n   copy(window._rejectedListings)\n`);
-}
-
-// Make it globally available
-window.viewRejectedListings = viewRejectedListings;
-
-// ============================================
-// STRUCTURED PARSING HELPERS (JobSpy-inspired)
-// ============================================
-
-/**
- * Parse salary string into structured data with confidence scoring
- * Inspired by JobSpy's compensation parsing approach
- */
-function parseStructuredSalary(salaryString, bodyText = '') {
-  const result = {
-    raw: salaryString || '',
-    interval: null,
-    min: null,
-    max: null,
-    currency: 'USD',
-    confidence: 'none',
-    source: 'not_found'
-  };
-  
-  if (!salaryString) return result;
-  
-  // Pattern: $80,000 - $100,000 or $80k - $100k
-  const rangeMatch = salaryString.match(/\$\s*([\d,]+\.?\d*)\s*k?\s*[-–to]+\s*\$?\s*([\d,]+\.?\d*)\s*k?/i);
-  if (rangeMatch) {
-    let min = rangeMatch[1].replace(/,/g, '');
-    let max = rangeMatch[2].replace(/,/g, '');
-    
-    // Handle 'k' notation (80k = 80,000)
-    if (/k/i.test(salaryString)) {
-      min = parseFloat(min) * 1000;
-      max = parseFloat(max) * 1000;
-    } else {
-      min = parseFloat(min);
-      max = parseFloat(max);
-    }
-    
-    result.min = min;
-    result.max = max;
-    result.confidence = 'high';
-    result.source = 'direct_data';
-  } else {
-    // Single value: $80,000 or $80k
-    const singleMatch = salaryString.match(/\$\s*([\d,]+\.?\d*)\s*k?/i);
-    if (singleMatch) {
-      let value = singleMatch[1].replace(/,/g, '');
-      if (/k/i.test(salaryString)) {
-        value = parseFloat(value) * 1000;
-      } else {
-        value = parseFloat(value);
-      }
-      result.min = value;
-      result.max = value;
-      result.confidence = 'medium';
-      result.source = 'direct_data';
-    }
-  }
-  
-  // Detect interval from context
-  if (result.min || result.max) {
-    const avgValue = result.max || result.min;
-    
-    if (/hour|hr|\/h/i.test(salaryString)) {
-      result.interval = 'hourly';
-    } else if (/month|monthly|\/mo/i.test(salaryString)) {
-      result.interval = 'monthly';
-    } else if (/week|weekly|\/wk/i.test(salaryString)) {
-      result.interval = 'weekly';
-    } else if (/year|annual|yearly|\/yr/i.test(salaryString)) {
-      result.interval = 'yearly';
-    } else {
-      // Infer from amount
-      if (avgValue >= 30000) {
-        result.interval = 'yearly';
-      } else if (avgValue >= 2000) {
-        result.interval = 'monthly';
-      } else if (avgValue >= 400) {
-        result.interval = 'weekly';
-      } else if (avgValue < 400) {
-        result.interval = 'hourly';
-      }
-    }
-  }
-  
-  return result;
-}
-
-/**
- * Parse location string into structured data
- * Inspired by JobSpy's location parsing approach
- */
-function parseStructuredLocation(locationString) {
-  const result = {
-    raw: locationString || '',
-    city: null,
-    state: null,
-    country: 'USA',
-    isRemote: false,
-    confidence: 'none'
-  };
-  
-  if (!locationString) return result;
-  
-  // Check for remote indicators
-  if (/\b(remote|work from home|wfh|anywhere)\b/i.test(locationString)) {
-    result.isRemote = true;
-    result.confidence = 'high';
-    
-    // Still try to extract location if "Remote in California" pattern
-    const remoteInMatch = locationString.match(/remote\s+in\s+([^,]+)(?:,\s*([A-Z]{2}))?/i);
-    if (remoteInMatch) {
-      result.city = remoteInMatch[1]?.trim();
-      result.state = remoteInMatch[2]?.trim();
-    }
-    return result;
-  }
-  
-  // Pattern: "San Francisco, CA" or "New York, NY"
-  const cityStateMatch = locationString.match(/^([^,]+),\s*([A-Z]{2})$/);
-  if (cityStateMatch) {
-    result.city = cityStateMatch[1].trim();
-    result.state = cityStateMatch[2].trim();
-    result.confidence = 'high';
-    return result;
-  }
-  
-  // Pattern: "San Francisco" (city only)
-  const cityOnlyMatch = locationString.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/);
-  if (cityOnlyMatch) {
-    result.city = cityOnlyMatch[1].trim();
-    result.confidence = 'medium';
-    return result;
-  }
-  
-  // Pattern: "CA" (state only)
-  const stateOnlyMatch = locationString.match(/^([A-Z]{2})$/);
-  if (stateOnlyMatch) {
-    result.state = stateOnlyMatch[1];
-    result.confidence = 'medium';
-    return result;
-  }
-  
-  // Fallback: use raw string as city
-  result.city = locationString.trim();
-  result.confidence = 'low';
-  
-  return result;
-}
-
-/**
- * Normalize job type to standard enum values
- * Inspired by JobSpy's job_type enumeration
- */
-function normalizeJobType(rawText) {
-  if (!rawText) return null;
-  
-  const text = rawText.toLowerCase();
-  
-  if (/full.?time|permanent/i.test(text)) return 'fulltime';
-  if (/part.?time/i.test(text)) return 'parttime';
-  if (/intern|internship|co-?op/i.test(text)) return 'internship';
-  if (/contract|freelance|temp|consultant/i.test(text)) return 'contract';
-  
-  return null;
-}
-
-/**
- * Calculate overall confidence score for a parsed job
- */
-function calculateJobConfidence(jobData) {
-  let score = 0;
-  let maxScore = 0;
-  
-  // Company (weight: 30)
-  if (jobData._meta?.company?.confidence === 'high') score += 30;
-  else if (jobData._meta?.company?.confidence === 'medium') score += 20;
-  else if (jobData._meta?.company?.confidence === 'low') score += 10;
-  maxScore += 30;
-  
-  // Role (weight: 30)
-  if (jobData._meta?.role?.confidence === 'high') score += 30;
-  else if (jobData._meta?.role?.confidence === 'medium') score += 20;
-  else if (jobData._meta?.role?.confidence === 'low') score += 10;
-  maxScore += 30;
-  
-  // Location (weight: 20)
-  if (jobData._meta?.location?.confidence === 'high') score += 20;
-  else if (jobData._meta?.location?.confidence === 'medium') score += 13;
-  else if (jobData._meta?.location?.confidence === 'low') score += 7;
-  maxScore += 20;
-  
-  // Salary (weight: 10)
-  if (jobData._meta?.salary?.confidence === 'high') score += 10;
-  else if (jobData._meta?.salary?.confidence === 'medium') score += 6;
-  else if (jobData._meta?.salary?.confidence === 'low') score += 3;
-  maxScore += 10;
-  
-  // URL (weight: 10)
-  if (jobData._meta?.url?.confidence === 'high') score += 10;
-  else if (jobData._meta?.url?.confidence === 'medium') score += 6;
-  maxScore += 10;
-  
-  const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-  
-  if (percentage >= 80) return 'high';
-  if (percentage >= 50) return 'medium';
-  return 'low';
-}
-
-// ============================================
-// LISTING VALIDATION & QUALITY CONTROL
-// ============================================
-
-/**
- * Validate if extracted data represents a real job listing
- * Rejects marketing fluff, incomplete data, and garbage
- */
-function isValidListing(listing, emailBody = '') {
-  const reasons = [];
-  
-  // CRITICAL: Must have company and role
-  if (!listing.company || listing.company === 'Unknown') {
-    reasons.push('No company name found');
-    return { isValid: false, reasons, confidence: 'rejected' };
-  }
-  
-  if (!listing.role || listing.role === 'Various Roles') {
-    reasons.push('No specific role title found');
-    return { isValid: false, reasons, confidence: 'rejected' };
-  }
-  
-  // Blacklist: Marketing/system terms that aren't companies
-  const companyBlacklist = [
-    /career advisor/i,
-    /your coach/i,
-    /recruiter team/i,
-    /support team/i,
-    /phil|zippy|indeed assist/i, // AI mascots
-    /unsubscribe/i,
-    /click here/i,
-    /view (all|more)/i,
-    /^(and|or|the|a)\s/i, // Starts with article
-  ];
-  
-  for (const pattern of companyBlacklist) {
-    if (pattern.test(listing.company)) {
-      reasons.push(`Company name looks like marketing text: "${listing.company}"`);
-      return { isValid: false, reasons, confidence: 'rejected' };
-    }
-  }
-  
-  // Blacklist: Role titles that are clearly not jobs
-  const roleBlacklist = [
-    /think this job/i,
-    /might be right/i,
-    /new job(s)? (at|for)/i,
-    /career advisor/i,
-    /hi |hello |hey /i, // Greetings
-    /^(and|or|the|a)\s/i,
-    /unsubscribe/i,
-    /click here/i,
-    /view details/i,
-    /apply now/i,
-    /^(welcome|thanks|congratulations)/i,
-  ];
-  
-  for (const pattern of roleBlacklist) {
-    if (pattern.test(listing.role)) {
-      reasons.push(`Role title looks like marketing text: "${listing.role}"`);
-      return { isValid: false, reasons, confidence: 'rejected' };
-    }
-  }
-  
-  // Role must contain job-related terms
-  const jobTerms = /engineer|developer|manager|analyst|designer|architect|scientist|specialist|coordinator|director|associate|assistant|supervisor|lead|senior|junior|intern|administrator|technician|consultant|representative|officer|operator|worker|assembler|mechanic|driver|nurse|teacher|accountant|sales|marketing|product|project/i;
-  
-  if (!jobTerms.test(listing.role)) {
-    reasons.push(`Role doesn't contain job-related terms: "${listing.role}"`);
-    return { isValid: false, reasons, confidence: 'rejected' };
-  }
-  
-  // URL validation (if present)
-  if (listing.url) {
-    // Reject image URLs
-    if (/\.(jpg|jpeg|png|gif|svg|webp)/i.test(listing.url)) {
-      reasons.push(`URL is an image file: "${listing.url}"`);
-      return { isValid: false, reasons, confidence: 'rejected' };
-    }
-    
-    // Reject unsubscribe/preferences links
-    if (/unsubscribe|preferences|settings|profile/i.test(listing.url)) {
-      reasons.push(`URL is not a job link: "${listing.url}"`);
-      return { isValid: false, reasons, confidence: 'rejected' };
-    }
-  }
-  
-  // Location validation: Check for truncated city names
-  if (listing.location) {
-    // Single word locations without state are suspicious (except known cities)
-    const knownCities = /^(remote|austin|boston|chicago|dallas|denver|houston|miami|phoenix|portland|seattle|atlanta|anywhere)$/i;
-    const hasState = /,\s*[A-Z]{2}/.test(listing.location);
-    const isSingleWord = !/\s/.test(listing.location.trim());
-    
-    if (isSingleWord && !hasState && !knownCities.test(listing.location)) {
-      reasons.push(`Location might be truncated: "${listing.location}" (missing city prefix?)`);
-      // Don't reject, just warn
-    }
-  }
-  
-  // Company name length check (very short names are suspicious)
-  if (listing.company.length < 2) {
-    reasons.push(`Company name too short: "${listing.company}"`);
-    return { isValid: false, reasons, confidence: 'rejected' };
-  }
-  
-  // Role length check (too short or too long)
-  if (listing.role.length < 3) {
-    reasons.push(`Role title too short: "${listing.role}"`);
-    return { isValid: false, reasons, confidence: 'rejected' };
-  }
-  
-  if (listing.role.length > 150) {
-    reasons.push(`Role title too long (probably a paragraph): "${listing.role.substring(0, 50)}..."`);
-    return { isValid: false, reasons, confidence: 'rejected' };
-  }
-  
-  // If we got here, it's probably valid
-  if (reasons.length > 0) {
-    return { isValid: true, reasons, confidence: 'low' }; // Valid but with warnings
-  }
-  
-  return { isValid: true, reasons: [], confidence: 'acceptable' };
-}
-
-/**
- * Extract job listings from HTML structure
- * Finds repeating job blocks instead of parsing marketing text
- */
-function extractJobListingsFromHTML(htmlBody, subject, from) {
-  if (!htmlBody) return [];
-  
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlBody, 'text/html');
-    const listings = [];
-    
-    // Strategy 1: Find all links that look like job links
-    const potentialJobLinks = doc.querySelectorAll('a[href]');
-    const jobLinks = Array.from(potentialJobLinks).filter(link => {
-      const href = link.href || '';
-      const text = link.textContent || '';
-      
-      // Must be a real URL
-      if (!href.startsWith('http')) return false;
-      
-      // Exclude marketing links
-      if (/unsubscribe|preferences|settings|facebook|twitter|linkedin\.com\/company/i.test(href)) return false;
-      
-      // Exclude image links
-      if (/\.(jpg|jpeg|png|gif|svg)/i.test(href)) return false;
-      
-      // Include if URL contains job-related terms
-      if (/job|apply|career|position|opening|vacancy/i.test(href)) return true;
-      
-      // Include if link text is job-related
-      if (/apply|view job|see details|learn more/i.test(text)) return true;
-      
-      return false;
-    });
-    
-    console.log(`Found ${jobLinks.length} potential job links in email`);
-    
-    // For each job link, extract the surrounding context
-    for (const link of jobLinks) {
-      const listing = extractListingFromContext(link, doc);
-      
-      if (listing) {
-        listing.url = link.href;
-        listings.push(listing);
-      }
-    }
-    
-    // Remove duplicates (same URL)
-    const uniqueListings = [];
-    const seenUrls = new Set();
-    
-    for (const listing of listings) {
-      if (!seenUrls.has(listing.url)) {
-        seenUrls.add(listing.url);
-        uniqueListings.push(listing);
-      }
-    }
-    
-    console.log(`Extracted ${uniqueListings.length} unique listings from HTML structure`);
-    return uniqueListings;
-    
-  } catch (error) {
-    console.error('Error parsing HTML structure:', error);
-    return [];
-  }
-}
-
-/**
- * Extract listing data from the context around a job link
- */
-function extractListingFromContext(linkElement, doc) {
-  // Find the container element (usually a <td>, <div>, or <table>)
-  let container = linkElement.parentElement;
-  let depth = 0;
-  
-  // Walk up the DOM tree to find a substantial container
-  while (container && depth < 8) {
-    const text = container.textContent || '';
-    
-    // Stop if we found a container with enough text (30-1500 chars for LinkedIn)
-    if (text.length > 30 && text.length < 1500) {
-      break;
-    }
-    
-    container = container.parentElement;
-    depth++;
-  }
-  
-  if (!container) {
-    console.log('⚠️  No container found for link');
-    return null;
-  }
-  
-  const text = container.textContent || '';
-  const html = container.innerHTML || '';
-  
-  // DEBUG: Log first 200 chars to see what we're working with
-  console.log('📝 Container text preview:', text.substring(0, 200).replace(/\s+/g, ' '));
-  
-  // Extract company name - LinkedIn specific patterns
-  let company = '';
-  const companyPatterns = [
-    // "Company Name" (in quotes)
-    /"([^"]{3,50})"/,
-    // Company at the start of a line followed by newline
-    /^([A-Z][A-Za-z0-9\s&,.-]{2,50})\s*\n/m,
-    // After "at" or "@"
-    /(?:at|@)\s+([A-Z][A-Za-z0-9\s&,.-]{2,50})(?:\s+in|\s+\||$|•)/i,
-    // In strong/bold tags
-    /<(?:strong|b)>([A-Z][A-Za-z0-9\s&,.-]{2,50})<\/(?:strong|b)>/,
-    // Second line (often company name on LinkedIn)
-    /\n([A-Z][A-Za-z0-9\s&,.-]{2,50})\s*\n/,
-    // Before location (City, STATE pattern)
-    /([A-Z][A-Za-z0-9\s&,.-]{2,50})\s+[A-Z][a-z]+,\s*[A-Z]{2}/,
-  ];
-  
-  for (const pattern of companyPatterns) {
-    const match = text.match(pattern) || html.match(pattern);
-    if (match && match[1]) {
-      const candidate = match[1].trim();
-      // Filter out obvious non-companies
-      if (!/^(view|see|apply|learn|more|details|click)/i.test(candidate)) {
-        company = candidate;
-        console.log('✅ Found company:', company);
-        break;
-      }
-    }
-  }
-  
-  // Extract role title
-  let role = '';
-  const roleElement = container.querySelector('h1, h2, h3, h4, h5, h6, strong, b');
-  if (roleElement && roleElement.textContent.length > 3 && roleElement.textContent.length < 100) {
-    role = roleElement.textContent.trim();
-    console.log('✅ Found role from element:', role);
-  } else {
-    // Try first substantial line of text
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3 && l.length < 100);
-    if (lines.length > 0) {
-      // First line is usually the role title
-      role = lines[0];
-      console.log('✅ Found role from first line:', role);
-    }
-  }
-  
-  // Extract location
-  let location = '';
-  const locationPatterns = [
-    // City, STATE
-    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z]{2})(?:\s|$|•|\||·)/,
-    // "Location:" label
-    /(?:location|located in)\s*:?\s*([A-Za-z\s]+,\s*[A-Z]{2})/i,
-    // Remote patterns
-    /(Remote|Anywhere)/i,
-  ];
-  
-  for (const pattern of locationPatterns) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      location = match[1].trim();
-      console.log('✅ Found location:', location);
-      break;
-    }
-  }
-  
-  // Extract salary
-  let salary = '';
-  const salaryMatch = text.match(/\$[\d,]+(?:\.\d{2})?\s*[-–to]+\s*\$?[\d,]+(?:\.\d{2})?(?:\s*(?:per|\/)\s*(?:hour|hr|year|yr|month|mo))?/i);
-  if (salaryMatch) {
-    salary = salaryMatch[0];
-    console.log('✅ Found salary:', salary);
-  }
-  
-  const result = {
-    company,
-    role,
-    location,
-    salary,
-    url: '', // Will be set by caller
-    rawContext: text.substring(0, 300), // Keep first 300 chars for debugging
-  };
-  
-  console.log('📦 Extracted:', { company: company || 'MISSING', role: role || 'MISSING', location, salary });
-  
-  return result;
-}
-
-// ============================================
-// END LISTING VALIDATION & QUALITY CONTROL
-// ============================================
-
 function parseJobEmail(message) {
   try {
     const headers = message.payload.headers;
     const subject = headers.find(h => h.name === 'Subject')?.value || '';
     const from = headers.find(h => h.name === 'From')?.value || '';
     
-    console.log('📧 Parsing email from:', from, '| Subject:', subject);
+    console.log('Parsing email from:', from, '| Subject:', subject);
     
-    // Get email body (prefer HTML for structure parsing)
-    let htmlBody = '';
-    let textBody = '';
-    
-    if (message.payload.parts) {
-      const htmlPart = message.payload.parts.find(part => part.mimeType === 'text/html');
-      const textPart = message.payload.parts.find(part => part.mimeType === 'text/plain');
-      
-      if (htmlPart && htmlPart.body.data) {
-        htmlBody = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      }
+    // Get email body
+    let body = '';
+    if (message.payload.body.data) {
+      body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    } else if (message.payload.parts) {
+      const textPart = message.payload.parts.find(part => part.mimeType === 'text/plain' || part.mimeType === 'text/html');
       if (textPart && textPart.body.data) {
-        textBody = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      }
-    } else if (message.payload.body.data) {
-      const body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      // Guess if it's HTML or text
-      if (/<html|<body|<div/i.test(body)) {
-        htmlBody = body;
-      } else {
-        textBody = body;
+        body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
       }
     }
     
-    const body = htmlBody || textBody; // Use whatever we got
-    
-    // STRATEGY 1: Try HTML structure extraction (best quality)
-    if (htmlBody) {
-      console.log('🔍 Attempting HTML structure extraction...');
-      const htmlListings = extractJobListingsFromHTML(htmlBody, subject, from);
-      
-      if (htmlListings.length > 0) {
-        console.log(`✅ Found ${htmlListings.length} listings via HTML extraction`);
-        
-        // Validate and return the first valid listing
-        for (const listing of htmlListings) {
-          const validation = isValidListing(listing, htmlBody);
-          
-          if (validation.isValid) {
-            console.log('✅ Valid listing found via HTML extraction');
-            listing.source = from.includes('linkedin.com') ? 'LinkedIn' :
-                           from.includes('indeed.com') ? 'Indeed' :
-                           from.includes('glassdoor.com') ? 'Glassdoor' :
-                           from.includes('ziprecruiter.com') ? 'ZipRecruiter' : 'Unknown';
-            listing.notes = `Found via ${listing.source} job alert (HTML extraction)`;
-            
-            // Add metadata
-            listing._meta = {
-              company: { confidence: 'high', source: 'html_structure' },
-              role: { confidence: 'high', source: 'html_structure' },
-              location: { confidence: listing.location ? 'medium' : 'none', source: 'html_structure' },
-              salary: { confidence: listing.salary ? 'medium' : 'none', source: 'html_structure' },
-              url: { confidence: 'high', source: 'html_structure' },
-              overallConfidence: 'high',
-              extractionMethod: 'html_structure',
-              validationWarnings: validation.reasons
-            };
-            
-            return listing;
-          } else {
-            console.log('❌ HTML-extracted listing failed validation:', validation.reasons.join(', '));
-          }
-        }
-      } else {
-        console.log('⚠️  No listings found via HTML extraction, falling back to text parsing');
-      }
-    }
-    
-    // STRATEGY 2: Fall back to text-based parsing
-    console.log('🔍 Attempting text-based parsing...');
+    // Use universal field mapper first
     let jobData = mapEmailFields(subject, body, from);
     
-    // Try specific parsers if universal mapper fails
+    // Fallback to specific parsers if field mapper fails
     if (!jobData || jobData.company === 'Unknown' || jobData.role === 'Various Roles') {
       if (from.includes('linkedin.com')) {
-        jobData = parseLinkedInJob(subject, body);
+        return parseLinkedInJob(subject, body);
       } else if (from.includes('indeed.com')) {
-        jobData = parseIndeedJob(subject, body);
+        return parseIndeedJob(subject, body);
       } else if (from.includes('glassdoor.com')) {
-        jobData = parseGlassdoorJob(subject, body);
+        return parseGlassdoorJob(subject, body);
       } else if (from.includes('greenhouse.io') || from.includes('lever.co')) {
-        jobData = parseATSJob(subject, body);
+        return parseATSJob(subject, body);
       } else {
-        jobData = parseGenericJob(subject, body, from);
-      }
-    }
-    
-    // VALIDATION: Check if we got garbage
-    if (jobData) {
-      const validation = isValidListing(jobData, body);
-      
-      if (!validation.isValid) {
-        console.log('❌ REJECTED: Listing failed validation');
-        console.log('   Company:', jobData.company);
-        console.log('   Role:', jobData.role);
-        console.log('   Reasons:', validation.reasons.join('; '));
-        
-        // Track rejected listing
-        if (!window._rejectedListings) window._rejectedListings = [];
-        window._rejectedListings.push({
-          timestamp: new Date().toISOString(),
-          from,
-          subject,
-          extracted: jobData,
-          reasons: validation.reasons
-        });
-        
-        return null; // Don't import garbage
-      }
-      
-      // Add validation warnings to metadata if present
-      if (validation.reasons.length > 0) {
-        if (!jobData._meta) jobData._meta = {};
-        jobData._meta.validationWarnings = validation.reasons;
-        console.log('⚠️  Valid but with warnings:', validation.reasons.join('; '));
-      } else {
-        console.log('✅ Listing passed validation');
+        // Try generic parsing for other job sources
+        return parseGenericJob(subject, body, from);
       }
     }
     
     return jobData;
   } catch (error) {
-    console.error('💥 Error parsing email:', error);
+    console.error('Error parsing email:', error);
     return null;
   }
 }
@@ -7602,20 +6709,7 @@ function mapEmailFields(subject, body, from) {
   let salary = '';
   let url = '';
   
-  // Track confidence for each field
-  let companyConfidence = 'none';
-  let roleConfidence = 'none';
-  let locationConfidence = 'none';
-  let salaryConfidence = 'none';
-  let urlConfidence = 'none';
-  
-  let companySource = 'not_found';
-  let roleSource = 'not_found';
-  let locationSource = 'not_found';
-  let salarySource = 'not_found';
-  let urlSource = 'not_found';
-  
-  // Try subject line patterns first (high confidence)
+  // Try subject line patterns first
   for (const pattern of parserConfig.patterns.subject) {
     const match = subject.match(pattern);
     if (match) {
@@ -7624,85 +6718,47 @@ function mapEmailFields(subject, body, from) {
         role = match[1]?.trim() || '';
         company = match[2]?.trim() || '';
         location = match[3]?.trim() || '';
-        roleConfidence = 'high';
-        companyConfidence = 'high';
-        locationConfidence = 'high';
-        roleSource = 'subject_line';
-        companySource = 'subject_line';
-        locationSource = 'subject_line';
       } else if (pattern.source.includes('@')) {
         // Format: "Role @ Company"
         role = match[1]?.trim() || '';
         company = match[2]?.trim() || '';
-        roleConfidence = 'high';
-        companyConfidence = 'high';
-        roleSource = 'subject_line';
-        companySource = 'subject_line';
       } else if (pattern.source.includes('for')) {
         // Format: "Company for Role"
         company = match[1]?.trim() || '';
         role = match[2]?.trim() || '';
-        companyConfidence = 'high';
-        roleConfidence = 'high';
-        companySource = 'subject_line';
-        roleSource = 'subject_line';
       } else if (pattern.source.includes('in') && pattern.source.includes('Apply')) {
         // Format: "Company1, Company2 in Location. Apply Now"
         const companies = match[1]?.trim().split(',').map(c => c.trim()) || [];
         company = companies[0] || 'Unknown';
         location = match[2]?.trim() || '';
         role = 'Various Roles';
-        companyConfidence = 'medium';
-        locationConfidence = 'high';
-        roleConfidence = 'low';
-        companySource = 'subject_line';
-        locationSource = 'subject_line';
-        roleSource = 'fallback';
       } else if (pattern.source.includes('is hiring')) {
         // Format: "Company is hiring"
         company = match[1]?.trim() || '';
         role = 'Various Roles';
-        companyConfidence = 'high';
-        roleConfidence = 'low';
-        companySource = 'subject_line';
-        roleSource = 'fallback';
       } else if (pattern.source.includes('I think this job')) {
         // Format: "Jared, I think this job might be right for you!"
         company = 'Unknown';
         role = 'Various Roles';
-        companyConfidence = 'low';
-        roleConfidence = 'low';
-        companySource = 'fallback';
-        roleSource = 'fallback';
       } else if (pattern.source.includes('has an open position')) {
         // Format: "💼 Jared, Company. has an open position"
         company = match[1]?.trim() || '';
         role = 'Various Roles';
-        companyConfidence = 'high';
-        roleConfidence = 'low';
-        companySource = 'subject_line';
-        roleSource = 'fallback';
       } else if (pattern.source.includes('Did you see this job')) {
         // Format: "Did you see this job?"
         company = 'Unknown';
         role = 'Various Roles';
-        companyConfidence = 'low';
-        roleConfidence = 'low';
-        companySource = 'fallback';
-        roleSource = 'fallback';
       }
       break; // Use first successful match
     }
   }
   
-  // Try body patterns for missing fields (medium confidence)
+  // Try body patterns for missing fields
   if (!company && parserConfig.patterns.body.company) {
     for (const pattern of parserConfig.patterns.body.company) {
       const match = body.match(pattern);
       if (match) {
         company = match[1]?.trim() || '';
-        companyConfidence = 'medium';
-        companySource = 'body_pattern';
         break;
       }
     }
@@ -7713,8 +6769,6 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         location = match[1]?.trim() || '';
-        locationConfidence = 'medium';
-        locationSource = 'body_pattern';
         break;
       }
     }
@@ -7725,14 +6779,12 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         salary = match[0] || '';
-        salaryConfidence = 'medium';
-        salarySource = 'body_pattern';
         break;
       }
     }
   }
   
-  // Additional salary extraction patterns (low confidence)
+  // Additional salary extraction patterns
   if (!salary) {
     // Try various salary patterns
     const salaryPatterns = [
@@ -7746,8 +6798,6 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         salary = match[0];
-        salaryConfidence = 'low';
-        salarySource = 'description';
         break;
       }
     }
@@ -7758,23 +6808,17 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         url = match[0] || '';
-        urlConfidence = 'medium';
-        urlSource = 'body_pattern';
         break;
       }
     }
   }
   
-  // Additional body parsing for common patterns (low confidence)
+  // Additional body parsing for common patterns
   if (!company || company === 'Unknown') {
     // Try to extract company from body text
     const companyMatch = body.match(/(?:at|@)\s+([^<\n,]+?)(?:\s+in\s+|\s*$)/i);
     if (companyMatch) {
       company = companyMatch[1].trim();
-      if (companyConfidence === 'none' || company !== 'Unknown') {
-        companyConfidence = 'low';
-        companySource = 'description';
-      }
     }
   }
   
@@ -7783,10 +6827,6 @@ function mapEmailFields(subject, body, from) {
     const locationMatch = body.match(/([A-Z][a-z]+\s+[A-Z][a-z]+,\s*[A-Z]{2})/);
     if (locationMatch) {
       location = locationMatch[1];
-      if (locationConfidence === 'none') {
-        locationConfidence = 'low';
-        locationSource = 'description';
-      }
     }
   }
   
@@ -7796,13 +6836,11 @@ function mapEmailFields(subject, body, from) {
     location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
     // Remove common non-location phrases
     location = location.replace(/(package\s+to\s+support|remote|hybrid|full-time|part-time).*$/i, '').trim();
-    // Try to find full city name in body if we have a partial city
-    if (location && location.length < 8) {
-      const fullCity = findFullCityName(location, body);
-      if (fullCity) {
-        location = fullCity;
-      }
-    }
+    // Only fix truncations if they're standalone (not part of a larger location)
+    if (location === 'Angeles' && !location.includes(',')) location = 'Los Angeles';
+    if (location === 'Monica' && !location.includes(',')) location = 'Santa Monica';
+    if (location === 'Francisco' && !location.includes(',')) location = 'San Francisco';
+    if (location === 'Diego' && !location.includes(',')) location = 'San Diego';
   }
   
   if (!role || role === 'Various Roles') {
@@ -7810,10 +6848,6 @@ function mapEmailFields(subject, body, from) {
     const roleMatch = body.match(/([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive))/i);
     if (roleMatch) {
       role = roleMatch[1].trim();
-      if (roleConfidence === 'none' || roleConfidence === 'low') {
-        roleConfidence = 'medium';
-        roleSource = 'description';
-      }
     }
   }
   
@@ -7830,13 +6864,11 @@ function mapEmailFields(subject, body, from) {
     location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
     location = location.replace(/package\s+to\s+support.*$/i, '').trim();
     
-    // Try to find full city name in body if we have a partial city
-    if (location && location.length < 8) {
-      const fullCity = findFullCityName(location, body);
-      if (fullCity) {
-        location = fullCity;
-      }
-    }
+    // Only fix truncations if they're standalone (not part of a larger location)
+    if (location === 'Angeles' && !location.includes(',')) location = 'Los Angeles';
+    if (location === 'Monica' && !location.includes(',')) location = 'Santa Monica';
+    if (location === 'Francisco' && !location.includes(',')) location = 'San Francisco';
+    if (location === 'Diego' && !location.includes(',')) location = 'San Diego';
   }
   
   if (role) {
@@ -7845,233 +6877,23 @@ function mapEmailFields(subject, body, from) {
     if (role.startsWith('a ')) role = role.substring(2);
     // Clean up common role title issues
     role = role.replace(/^\s*[a-z]\s+/, '').trim();
-    
-    // Validate role title - filter out obvious non-roles
-    if (isValidRoleTitle(role)) {
-      // Role is valid, keep it
-    } else {
-      // Role is invalid, try to extract from body or set to generic
-      const extractedRole = extractRoleFromBody(body);
-      role = extractedRole || 'Various Roles';
-    }
   }
   
   // Fallback if nothing was found
   if (!company && !role) {
     company = 'Unknown';
     role = subject;
-    companyConfidence = 'low';
-    roleConfidence = 'low';
-    companySource = 'fallback';
-    roleSource = 'fallback';
   }
   
-  // Use structured parsing helpers
-  const structuredSalary = parseStructuredSalary(salary, body);
-  const structuredLocation = parseStructuredLocation(location);
-  
-  // Update confidence based on structured parsing
-  if (structuredSalary.confidence !== 'none') {
-    salaryConfidence = structuredSalary.confidence;
-  }
-  if (structuredLocation.confidence !== 'none' && locationConfidence === 'none') {
-    locationConfidence = structuredLocation.confidence;
-  }
-  
-  // Check URL
-  if (url && url.startsWith('http')) {
-    urlConfidence = 'high';
-    urlSource = 'direct_data';
-  }
-  
-  const jobData = {
+  return {
     company: company || 'Unknown',
     role: role || 'Various Roles',
     location: location || '',
     salary: salary || '',
     url: url || '',
     source: source.charAt(0).toUpperCase() + source.slice(1),
-    notes: `Found via ${source} job alert`,
-    
-    // Metadata for confidence tracking
-    _meta: {
-      company: {
-        confidence: companyConfidence,
-        source: companySource
-      },
-      role: {
-        confidence: roleConfidence,
-        source: roleSource
-      },
-      location: {
-        confidence: locationConfidence,
-        source: locationSource,
-        structured: structuredLocation
-      },
-      salary: {
-        confidence: salaryConfidence,
-        source: salarySource,
-        structured: structuredSalary
-      },
-      url: {
-        confidence: urlConfidence,
-        source: urlSource
-      },
-      overallConfidence: null // will be calculated
-    }
+    notes: `Found via ${source} job alert`
   };
-  
-  // Calculate overall confidence
-  jobData._meta.overallConfidence = calculateJobConfidence(jobData);
-  
-  return jobData;
-}
-
-// Helper function to find full city name from partial city in email body
-function findFullCityName(partialCity, body) {
-  if (!partialCity || !body) return null;
-  
-  // Common city truncations and their full names
-  const cityMappings = {
-    'Angeles': 'Los Angeles',
-    'Monica': 'Santa Monica',
-    'Francisco': 'San Francisco',
-    'Diego': 'San Diego',
-    'Jose': 'San Jose',
-    'Antonio': 'San Antonio',
-    'Bernardino': 'San Bernardino',
-    'Gabriel': 'San Gabriel',
-    'Rafael': 'San Rafael',
-    'Mateo': 'San Mateo',
-    'Leandro': 'San Leandro',
-    'Bruno': 'San Bruno',
-    'Carlos': 'San Carlos',
-    'Luis': 'San Luis Obispo',
-    'Marcos': 'San Marcos',
-    'Fernando': 'San Fernando',
-    'Bernardino': 'San Bernardino',
-    'Clemente': 'San Clemente',
-    'Juan': 'San Juan',
-    'Pedro': 'San Pedro',
-    'Ramon': 'San Ramon',
-    'Ysidro': 'San Ysidro'
-  };
-  
-  // Check if partial city matches a known truncation
-  if (cityMappings[partialCity]) {
-    return cityMappings[partialCity];
-  }
-  
-  // Try to find the full city name in the email body
-  const cityPatterns = [
-    // Look for "City, State" format
-    new RegExp(`([A-Z][a-z]+\\s+${partialCity}[a-z]*,\\s*[A-Z]{2})`, 'i'),
-    // Look for "City, Country" format
-    new RegExp(`([A-Z][a-z]+\\s+${partialCity}[a-z]*,\\s*[A-Z][a-z]+)`, 'i'),
-    // Look for standalone city names
-    new RegExp(`\\b([A-Z][a-z]+\\s+${partialCity}[a-z]*)\\b`, 'i')
-  ];
-  
-  for (const pattern of cityPatterns) {
-    const match = body.match(pattern);
-    if (match) {
-      return match[1].trim();
-    }
-  }
-  
-  return null;
-}
-
-// Helper function to validate if a role title is legitimate
-function isValidRoleTitle(role) {
-  if (!role || role.length < 3) return false;
-  
-  // Common non-role words that might be extracted incorrectly
-  const invalidWords = [
-    'apply', 'now', 'click', 'here', 'view', 'job', 'position', 'opening',
-    'hiring', 'company', 'location', 'salary', 'remote', 'hybrid', 'full',
-    'time', 'part', 'contract', 'temporary', 'permanent', 'benefits',
-    'package', 'support', 'various', 'roles', 'jobs', 'positions',
-    'indeed', 'linkedin', 'glassdoor', 'ziprecruiter', 'angel', 'remote',
-    'weworkremotely', 'greenhouse', 'lever', 'ats', 'hr', 'recruiter',
-    'talent', 'acquisition', 'team', 'department', 'division', 'unit',
-    'office', 'headquarters', 'branch', 'location', 'address', 'city',
-    'state', 'country', 'region', 'area', 'zone', 'district', 'county'
-  ];
-  
-  const roleLower = role.toLowerCase();
-  
-  // Check if role contains invalid words
-  for (const invalidWord of invalidWords) {
-    if (roleLower.includes(invalidWord)) {
-      return false;
-    }
-  }
-  
-  // Check if role is too generic
-  const genericRoles = ['various roles', 'multiple positions', 'open positions', 'job openings'];
-  if (genericRoles.includes(roleLower)) {
-    return false;
-  }
-  
-  // Check if role has proper capitalization (should start with capital letter)
-  if (!/^[A-Z]/.test(role)) {
-    return false;
-  }
-  
-  // Check if role contains common job title indicators
-  const jobTitleIndicators = [
-    'manager', 'specialist', 'engineer', 'director', 'analyst', 'coordinator',
-    'representative', 'advisor', 'consultant', 'executive', 'assistant',
-    'associate', 'senior', 'junior', 'lead', 'principal', 'staff',
-    'developer', 'designer', 'architect', 'administrator', 'supervisor',
-    'officer', 'agent', 'clerk', 'technician', 'operator', 'technician',
-    'scientist', 'researcher', 'writer', 'editor', 'producer', 'director',
-    'coordinator', 'facilitator', 'trainer', 'instructor', 'teacher',
-    'professor', 'researcher', 'analyst', 'strategist', 'planner'
-  ];
-  
-  const hasJobIndicator = jobTitleIndicators.some(indicator => 
-    roleLower.includes(indicator)
-  );
-  
-  return hasJobIndicator;
-}
-
-// Helper function to extract role title from email body when subject parsing fails
-function extractRoleFromBody(body) {
-  if (!body) return null;
-  
-  // Common role extraction patterns
-  const rolePatterns = [
-    // "We are looking for a [Role]"
-    /(?:looking for|seeking|hiring)\s+(?:a\s+)?([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
-    
-    // "Position: [Role]"
-    /(?:position|role|title):\s*([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
-    
-    // "[Company] is hiring a [Role]"
-    /(?:is|are)\s+hiring\s+(?:a\s+)?([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
-    
-    // "Join our team as a [Role]"
-    /(?:join our team as|become a|work as)\s+(?:a\s+)?([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i,
-    
-    // Generic job title patterns
-    /([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive|Developer|Designer|Architect|Administrator|Supervisor|Officer|Agent|Clerk|Technician|Operator|Scientist|Researcher|Writer|Editor|Producer|Facilitator|Trainer|Instructor|Teacher|Professor|Strategist|Planner))/i
-  ];
-  
-  for (const pattern of rolePatterns) {
-    const match = body.match(pattern);
-    if (match) {
-      const role = match[1].trim();
-      // Validate the extracted role
-      if (isValidRoleTitle(role)) {
-        return role;
-      }
-    }
-  }
-  
-  return null;
 }
 
 function parseGenericJob(subject, body, from) {
@@ -9104,43 +7926,7 @@ async function loadMappingTrainingData() {
     return;
   }
   
-  // Check if token is expired and refresh if needed
-  if (state.gmail.tokenExpiry && Date.now() > state.gmail.tokenExpiry) {
-    console.log('Gmail token expired, attempting to refresh...');
-    try {
-      await refreshGmailToken();
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      alert('Gmail session expired. Please reconnect Gmail.');
-      disconnectGmail();
-      return;
-    }
-  }
-  
-  // Make sure Gmail API is loaded
-  if (!gapi || !gapi.client || !gapi.client.gmail) {
-    console.log('Gmail API not ready, attempting to reinitialize...');
-    try {
-      await initGoogleAPI();
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (!gapi.client.gmail) {
-        alert('Gmail API not ready. Please reconnect Gmail.');
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to reinitialize Gmail API:', error);
-      alert('Gmail API not ready. Please reconnect Gmail.');
-      return;
-    }
-  }
-  
   try {
-    // Set the access token for the API call
-    gapi.client.setToken({
-      access_token: state.gmail.accessToken
-    });
-    
     // Load recent job alert emails
     const response = await gapi.client.gmail.users.messages.list({
       userId: 'me',
@@ -9156,13 +7942,7 @@ async function loadMappingTrainingData() {
       return;
     }
     
-    container.innerHTML = `
-      <div style="background: var(--ok); color: white; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
-        <h3 style="margin: 0 0 8px 0;">🎯 Training Purpose</h3>
-        <p style="margin: 0; font-size: 14px;">Review how emails are being parsed and correct any mistakes. This helps the system learn and improve accuracy for future job alerts.</p>
-      </div>
-      <h3>📧 Email Parsing Training</h3>
-    `;
+    container.innerHTML = '<h3>Email Parsing Training</h3>';
     
     for (let i = 0; i < Math.min(messages.length, 5); i++) {
       const message = await gapi.client.gmail.users.messages.get({
@@ -9185,58 +7965,50 @@ async function loadMappingTrainingData() {
       }
       
       // Parse with current system
-      console.log('Parsing email:', { subject, from, bodyLength: body.length });
       const parsed = mapEmailFields(subject, body, from);
-      console.log('Parsed result:', parsed);
       
       // Create training interface
       const trainingCard = document.createElement('div');
       trainingCard.style.cssText = 'background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px;';
       
       trainingCard.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div>
-            <h4 style="margin: 0 0 8px 0;">📧 Original Email</h4>
-            <div style="background: var(--bg); padding: 12px; border-radius: 4px; font-size: 12px; border: 1px solid var(--line);">
-              <div style="margin-bottom: 8px;"><strong>From:</strong> ${from}</div>
-              <div style="margin-bottom: 8px;"><strong>Subject:</strong> ${subject}</div>
-              <div><strong>Body:</strong></div>
-              <div style="max-height: 120px; overflow-y: auto; white-space: pre-wrap; margin-top: 4px; padding: 8px; background: var(--panel); border-radius: 4px;">${body.substring(0, 800)}${body.length > 800 ? '...' : ''}</div>
+            <h4 style="margin: 0 0 8px 0;">Original Email</h4>
+            <div style="background: var(--bg); padding: 12px; border-radius: 4px; font-size: 12px;">
+              <strong>From:</strong> ${from}<br>
+              <strong>Subject:</strong> ${subject}<br>
+              <strong>Body:</strong><br>
+              <div style="max-height: 100px; overflow-y: auto; white-space: pre-wrap;">${body.substring(0, 500)}...</div>
             </div>
           </div>
           <div>
-            <h4 style="margin: 0 0 12px 0;">🔧 Current Parsing Results</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+            <h4 style="margin: 0 0 8px 0;">Current Parsing</h4>
+            <div style="display: grid; gap: 8px;">
               <div>
-                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Company:</label>
-                <input type="text" value="${parsed.company}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'company', this.value)">
+                <label style="font-size: 12px; color: var(--muted);">Company:</label>
+                <input type="text" value="${parsed.company}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'company', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Role:</label>
-                <input type="text" value="${parsed.role}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'role', this.value)">
+                <label style="font-size: 12px; color: var(--muted);">Role:</label>
+                <input type="text" value="${parsed.role}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'role', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Location:</label>
-                <input type="text" value="${parsed.location}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'location', this.value)">
+                <label style="font-size: 12px; color: var(--muted);">Location:</label>
+                <input type="text" value="${parsed.location}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'location', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Salary:</label>
-                <input type="text" value="${parsed.salary}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'salary', this.value)">
+                <label style="font-size: 12px; color: var(--muted);">Salary:</label>
+                <input type="text" value="${parsed.salary}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'salary', this.value)">
               </div>
               <div>
-                <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Source:</label>
-                <input type="text" value="${parsed.source}" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px;" onchange="updateParsedField(${i}, 'source', this.value)">
+                <label style="font-size: 12px; color: var(--muted);">Source:</label>
+                <input type="text" value="${parsed.source}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'source', this.value)">
               </div>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <button onclick="saveTrainingCorrection(${i})" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 14px;">
-                💾 Save Correction
-              </button>
-              <button onclick="testParsingForEmail(${i})" class="modern-button secondary" style="height: 36px; padding: 0 16px; font-size: 14px;">
-                🔄 Re-parse
-              </button>
-              <span style="font-size: 12px; color: var(--muted);">This helps improve future parsing accuracy</span>
-            </div>
+            <button onclick="saveTrainingCorrection(${i})" style="background: var(--accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 12px;">
+              Save Correction
+            </button>
           </div>
         </div>
       `;
@@ -9255,187 +8027,11 @@ function updateParsedField(index, field, value) {
   console.log(`Updating field ${field} to ${value} for email ${index}`);
 }
 
-// Test parsing for a specific email
-function testParsingForEmail(index) {
-  console.log(`Testing parsing for email ${index}`);
-  // This would re-run the parsing and update the display
-  alert('Re-parsing email... This feature will be implemented to test different parsing approaches.');
-}
-
 function saveTrainingCorrection(index) {
   // This would save the correction and potentially update parsing rules
   console.log(`Saving correction for email ${index}`);
-  
-  // Update statistics
-  if (!state.parserStats) {
-    state.parserStats = {
-      totalEmailsProcessed: 0,
-      correctionsMade: 0,
-      lastScanTime: null,
-      accuracyRate: 0
-    };
-  }
-  
-  state.parserStats.correctionsMade++;
-  updateParserStats();
-  saveToFirebase();
-  
   alert('Correction saved! This will help improve future parsing.');
 }
-
-// Initialize parser statistics
-function initParserStats() {
-  if (!state.parserStats) {
-    state.parserStats = {
-      totalEmailsProcessed: 0,
-      correctionsMade: 0,
-      lastScanTime: null,
-      accuracyRate: 0
-    };
-  }
-  
-  // Update from Gmail scan results if available
-  if (state.gmail && state.gmail.lastScanResults) {
-    state.parserStats.totalEmailsProcessed += state.gmail.lastScanResults.emailsProcessed || 0;
-    state.parserStats.lastScanTime = state.gmail.lastScanTime;
-  }
-  
-  updateParserStats();
-  populateSourceRules();
-}
-
-// Update parser statistics display
-function updateParserStats() {
-  const stats = state.parserStats || {
-    totalEmailsProcessed: 0,
-    correctionsMade: 0,
-    lastScanTime: null,
-    accuracyRate: 0
-  };
-  
-  // Calculate accuracy rate (simplified - in real implementation, track correct vs incorrect)
-  const accuracyRate = stats.totalEmailsProcessed > 0 ? 
-    Math.max(0, 100 - (stats.correctionsMade / stats.totalEmailsProcessed * 100)) : 0;
-  
-  const totalEmailsEl = document.getElementById('totalEmailsProcessed');
-  const accuracyEl = document.getElementById('parsingAccuracy');
-  const correctionsEl = document.getElementById('correctionsMade');
-  const lastScanEl = document.getElementById('lastScanTime');
-  
-  if (totalEmailsEl) totalEmailsEl.textContent = stats.totalEmailsProcessed;
-  if (accuracyEl) accuracyEl.textContent = Math.round(accuracyRate) + '%';
-  if (correctionsEl) correctionsEl.textContent = stats.correctionsMade;
-  if (lastScanEl) {
-    if (stats.lastScanTime) {
-      const date = new Date(stats.lastScanTime);
-      lastScanEl.textContent = date.toLocaleString();
-    } else {
-      lastScanEl.textContent = 'Never';
-    }
-  }
-}
-
-// Populate source-specific rules
-function populateSourceRules() {
-  const container = document.getElementById('sourceRules');
-  if (!container) return;
-  
-  const sources = [
-    {
-      name: 'LinkedIn',
-      patterns: [
-        'Role at Company in Location',
-        'Role @ Company',
-        'Company is hiring'
-      ],
-      examples: [
-        'Software Engineer at Google in Mountain View, CA',
-        'Product Manager @ Meta',
-        'Tesla is hiring'
-      ]
-    },
-    {
-      name: 'Indeed',
-      patterns: [
-        'Company for Role',
-        'Role @ Company',
-        'New jobs for Role'
-      ],
-      examples: [
-        'Apple for Software Engineer',
-        'Data Scientist @ Netflix',
-        'New jobs for Product Manager'
-      ]
-    },
-    {
-      name: 'Glassdoor',
-      patterns: [
-        'Company1, Company2 in Location',
-        'Company is hiring Role'
-      ],
-      examples: [
-        'Microsoft, Amazon in Seattle, WA',
-        'Spotify is hiring Backend Engineer'
-      ]
-    },
-    {
-      name: 'ZipRecruiter',
-      patterns: [
-        'Role opportunities',
-        'Company hiring'
-      ],
-      examples: [
-        'Frontend Engineer opportunities',
-        'Stripe hiring'
-      ]
-    }
-  ];
-  
-  container.innerHTML = sources.map(source => `
-    <div style="background: var(--bg); padding: 16px; border-radius: 8px; border: 1px solid var(--line);">
-      <h4 style="margin: 0 0 12px 0; color: var(--accent);">${source.name}</h4>
-      <div style="margin-bottom: 12px;">
-        <div style="font-size: 12px; color: var(--muted); margin-bottom: 6px;">Patterns:</div>
-        ${source.patterns.map(pattern => `<div style="font-size: 11px; background: var(--panel); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; font-family: monospace;">${pattern}</div>`).join('')}
-      </div>
-      <div>
-        <div style="font-size: 12px; color: var(--muted); margin-bottom: 6px;">Examples:</div>
-        ${source.examples.map(example => `<div style="font-size: 11px; color: var(--text); margin-bottom: 2px;">• ${example}</div>`).join('')}
-      </div>
-    </div>
-  `).join('');
-}
-
-// Test function for email parsing improvements
-function testEmailParsing() {
-  console.log('Testing email parsing improvements...');
-  
-  // Test 1: Partial city name resolution
-  const testBody1 = "We are hiring a Software Engineer in Los Angeles, CA. Apply now!";
-  const result1 = findFullCityName("Angeles", testBody1);
-  console.log('Test 1 - City resolution:', result1); // Should return "Los Angeles"
-  
-  // Test 2: Role title validation
-  const validRole = "Software Engineer";
-  const invalidRole = "Apply Now";
-  console.log('Test 2a - Valid role:', isValidRoleTitle(validRole)); // Should return true
-  console.log('Test 2b - Invalid role:', isValidRoleTitle(invalidRole)); // Should return false
-  
-  // Test 3: Role extraction from body
-  const testBody2 = "We are looking for a Senior Product Manager to join our team.";
-  const extractedRole = extractRoleFromBody(testBody2);
-  console.log('Test 3 - Role extraction:', extractedRole); // Should return "Senior Product Manager"
-  
-  // Test 4: Full email parsing with improvements
-  const testSubject = "Software Engineer at TechCorp in Angeles";
-  const testBody3 = "TechCorp is hiring a Software Engineer in Los Angeles, CA. Salary: $120k-150k. Apply now!";
-  const parsedEmail = mapEmailFields(testSubject, testBody3, "jobs@indeed.com");
-  console.log('Test 4 - Full parsing:', parsedEmail);
-  
-  console.log('Email parsing tests completed!');
-}
-
-</script>
 
 </body>
 </html>

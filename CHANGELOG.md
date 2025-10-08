@@ -4,6 +4,45 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.2.0] - 2025-10-08
+
+### 🧹 Major Cleanup
+- **ARCHIVED Email Parsing System** - Removed unreliable Gmail integration
+  - HTML structure too unpredictable
+  - Extracted garbage data ("style=", "target=", etc.)
+  - Rejection rate: 157/165 listings
+  - See `archived/EMAIL_PARSING_CODE_ARCHIVE.md` for details
+
+### ✅ What's Kept
+- Manual job entry (fast and reliable)
+- Google Sheets sync (still useful!)
+- Applications Pipeline (core feature)
+- Priority grading system
+- Time blocking
+- Focus mode
+
+### 🗑️ Removed
+- Gmail integration UI
+- Email parsing functions (~500 lines)
+- Job Queue tab from navigation
+- Mapping tab from navigation  
+- Validation system
+- Confidence scoring UI
+- All parser documentation (moved to /archived/)
+
+### 🚀 Benefits
+- Cleaner codebase
+- Faster page load
+- Less complexity
+- Focus on manual workflow that actually works
+
+### 💡 Future
+- Consider Safari extension for direct DOM access
+- Would parse actual job pages, not mangled email HTML
+- More reliable than email parsing ever could be
+
+---
+
 ## [3.1.1] - 2025-10-08
 
 ### 🔧 Bug Fixes
