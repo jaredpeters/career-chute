@@ -4,6 +4,20 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.3.6] - 2025-10-08
+
+### 🛠️ FIXED: CSV Parsing for Unquoted Commas & Gmail UI Errors
+- **CSV Parsing Fixed**: Now handles unquoted commas in benefits field
+- **Robust Parsing**: Intelligently merges extra columns from unquoted commas
+- **Gmail UI Errors**: Fixed null reference errors in updateGmailUI function
+- **Column Mismatch**: Resolves "Row 2: Column count mismatch" issue
+
+### 🔧 Technical Fixes
+- **parseCSVLineRobust**: New function handles unquoted commas in CSV fields
+- **Smart Merging**: Merges extra columns into benefits field when needed
+- **Gmail UI Safety**: Added null checks for archived Gmail UI elements
+- **Better Error Handling**: Prevents crashes from missing UI elements
+
 ## [3.3.5] - 2025-10-08
 
 ### 🛠️ FIXED: Gmail Element Error & CSV Debug

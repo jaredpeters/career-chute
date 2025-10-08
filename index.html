@@ -2054,7 +2054,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.3.5'; // Fix Gmail element error and add CSV debug logging
+const APP_VERSION = '3.3.6'; // Fix CSV parsing for unquoted commas and Gmail UI errors
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -5847,6 +5847,11 @@ function updateGmailUI() {
   const disconnectBtn = document.getElementById('disconnectGmailBtn');
   const scanBtn = document.getElementById('scanEmailsBtn');
   
+  // Return early if Gmail UI elements don't exist (archived)
+  if (!statusText || !connectBtn || !disconnectBtn || !scanBtn) {
+    return;
+  }
+  
   if (state.gmail.connected) {
     let statusMessage = `Connected as ${state.gmail.userEmail}`;
     
@@ -6645,7 +6650,7 @@ function importCSVData() {
       if (!line) continue;
       
       try {
-        const values = parseCSVLine(line);
+        const values = parseCSVLineRobust(line);
         if (values.length !== headers.length) {
           console.warn(`Row ${i + 1}: Column count mismatch`);
           errors++;
@@ -6734,6 +6739,49 @@ function parseCSVLine(line) {
   return result;
 }
 
+// Alternative CSV parsing for unquoted fields with commas
+function parseCSVLineRobust(line) {
+  // First try the standard parsing
+  const standardResult = parseCSVLine(line);
+  
+  // If we get the expected number of columns, return it
+  if (standardResult.length === 8) {
+    return standardResult;
+  }
+  
+  // If we have more columns than expected, try to merge the extra ones
+  if (standardResult.length > 8) {
+    console.log('Too many columns, attempting to merge...');
+    
+    // The issue is likely that benefits field has unquoted commas
+    // Let's try to intelligently merge the extra columns
+    const merged = [...standardResult];
+    
+    // Merge columns 5-7 (benefits field) if we have too many
+    if (merged.length > 8) {
+      const benefitsParts = merged.slice(5, merged.length - 2); // Get the middle parts
+      const benefits = benefitsParts.join(', '); // Join with commas
+      
+      // Reconstruct with merged benefits
+      const result = [
+        merged[0], // company
+        merged[1], // role
+        merged[2], // location
+        merged[3], // salary
+        merged[4], // url
+        benefits,   // merged benefits
+        merged[merged.length - 2], // source
+        merged[merged.length - 1]  // notes
+      ];
+      
+      console.log('Merged result:', result);
+      return result;
+    }
+  }
+  
+  return standardResult;
+}
+
 // CSV Import from Add Application Modal
 function importFromCSVText() {
   let csvData = document.getElementById('csvImportText').value.trim();
@@ -6777,7 +6825,7 @@ function importFromCSVText() {
       if (!line) continue;
       
       try {
-        const values = parseCSVLine(line);
+        const values = parseCSVLineRobust(line);
         if (values.length !== headers.length) {
           console.warn(`Row ${i + 1}: Column count mismatch`);
           errors++;
