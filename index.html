@@ -1985,7 +1985,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.2.1'; // Added Google OAuth for Sheets (without Gmail)
+const APP_VERSION = '3.2.2'; // Auto-migrate existing Client ID to Google section
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -2020,6 +2020,12 @@ let state = {
     clientId: '',
     accessToken: null,
     tokenExpiry: null,
+  },
+  google: {
+    connected: false,
+    clientId: '',
+    accessToken: null,
+    lastConnected: null,
   },
   sheets: {
     enabled: false,
@@ -4781,6 +4787,12 @@ async function initializeApp() {
   
   // Initialize Google auth UI
   updateGoogleAuthUI();
+  
+  // Migrate Gmail Client ID to Google section if needed
+  if (state.gmail.clientId && !state.google.clientId) {
+    state.google.clientId = state.gmail.clientId;
+    console.log('✅ Migrated Gmail Client ID to Google section');
+  }
   
   // Show loading state
   updateSyncStatus('syncing', 'Starting...');

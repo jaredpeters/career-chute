@@ -4,6 +4,13 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.2.2] - 2025-10-08
+
+### 🔄 MIGRATION
+- **Auto-migrate Client ID**: Existing Gmail Client ID automatically copied to Google section
+- **Seamless Transition**: No need to re-enter your Google Client ID
+- **Backward Compatibility**: Preserves your existing configuration
+
 ## [3.2.1] - 2025-10-08
 
 ### 🔐 ADDED
