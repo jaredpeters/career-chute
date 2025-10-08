@@ -1951,16 +1951,30 @@ function formatDate(dateStr) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function formatDateTime(isoString) {
+function formatDateTime(isoString, forSpreadsheet = false) {
   if (!isoString) return '';
   const date = new Date(isoString);
+  
+  // For spreadsheets, always use absolute date/time
+  if (forSpreadsheet) {
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    }) + ' ' + date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  }
+  
+  // For UI, use relative time for recent dates
   const now = new Date();
   const diffMs = now - date;
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
   
-  // Relative time for recent dates
   if (diffMins < 1) return 'just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -5686,13 +5700,14 @@ async function initializeSpreadsheet() {
     state.sheets.spreadsheetUrl = spreadsheetUrl;
     state.sheets.enabled = true;
     
-    // Add header row
+    // Add header row with ID column first
     await gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
-      range: 'Job Queue!A1:L1',
+      range: 'Job Queue!A1:M1',
       valueInputOption: 'RAW',
       resource: {
         values: [[
+          'ID',
           'Company',
           'Role',
           'Match Score',
@@ -5732,37 +5747,78 @@ async function syncToGoogleSheets() {
       await initializeSpreadsheet();
     }
     
-    // Prepare data rows with formatted dates
-    const rows = state.applications.map(app => [
-      app.company || '',
-      app.role || '',
-      app.matchScore || calculateJobScore(app),
-      app.priority || getJobPriority(app),
-      app.salary || '',
-      app.location || '',
-      app.status || 'queued',
-      app.addedToQueue ? formatDateTime(app.addedToQueue) : '',
-      app.addedToPipeline ? formatDateTime(app.addedToPipeline) : '',
-      app.appliedDate ? formatDate(app.appliedDate) : '',
-      app.notes || '',
-      app.url || ''
-    ]);
+    // Only sync jobs that are in pipeline (not queued)
+    const pipelineJobs = state.applications.filter(app => app.status !== 'queued');
     
-    // Update spreadsheet
-    await gapi.client.sheets.spreadsheets.values.update({
+    if (pipelineJobs.length === 0) {
+      console.log('No pipeline jobs to sync');
+      return;
+    }
+    
+    // Read existing sheet data to find rows by ID
+    const existingData = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: state.sheets.spreadsheetId,
-      range: 'Job Queue!A2:L' + (rows.length + 1),
-      valueInputOption: 'RAW',
-      resource: {
-        values: rows
+      range: 'Job Queue!A2:M1000' // Read up to 1000 rows
+    });
+    
+    const existingRows = existingData.result.values || [];
+    const existingIds = new Map(); // Map ID to row number
+    
+    existingRows.forEach((row, index) => {
+      if (row[0]) { // If ID exists
+        existingIds.set(row[0], index + 2); // +2 because: 0-indexed + header row
       }
     });
+    
+    let updatedCount = 0;
+    let addedCount = 0;
+    
+    // Process each pipeline job
+    for (const app of pipelineJobs) {
+      const rowData = [
+        app.id,
+        app.company || '',
+        app.role || '',
+        app.matchScore || calculateJobScore(app),
+        app.priority || getJobPriority(app),
+        app.salary || '',
+        app.location || '',
+        app.status || '',
+        app.addedToQueue ? formatDateTime(app.addedToQueue, true) : '',
+        app.addedToPipeline ? formatDateTime(app.addedToPipeline, true) : '',
+        app.appliedDate ? formatDate(app.appliedDate) : '',
+        app.notes || '',
+        app.url || ''
+      ];
+      
+      if (existingIds.has(app.id)) {
+        // Update existing row
+        const rowNumber = existingIds.get(app.id);
+        await gapi.client.sheets.spreadsheets.values.update({
+          spreadsheetId: state.sheets.spreadsheetId,
+          range: `Job Queue!A${rowNumber}:M${rowNumber}`,
+          valueInputOption: 'RAW',
+          resource: { values: [rowData] }
+        });
+        updatedCount++;
+      } else {
+        // Append new row
+        await gapi.client.sheets.spreadsheets.values.append({
+          spreadsheetId: state.sheets.spreadsheetId,
+          range: 'Job Queue!A2:M2',
+          valueInputOption: 'RAW',
+          insertDataOption: 'INSERT_ROWS',
+          resource: { values: [rowData] }
+        });
+        addedCount++;
+      }
+    }
     
     state.sheets.lastSync = new Date().toISOString();
     saveToFirebase();
     
-    console.log('Synced', rows.length, 'jobs to Google Sheets');
-    alert(`✅ Synced ${rows.length} jobs to Google Sheets!`);
+    console.log(`Synced to Sheets: ${addedCount} added, ${updatedCount} updated`);
+    alert(`✅ Synced to Sheets!\n\n📝 Added: ${addedCount} new\n🔄 Updated: ${updatedCount} existing\n\nOnly pipeline jobs are synced.`);
   } catch (error) {
     console.error('Error syncing to Google Sheets:', error);
     alert('Failed to sync: ' + (error.result?.error?.message || error.message));
@@ -5824,14 +5880,14 @@ async function syncContactsToGoogleSheets() {
       });
     }
     
-    // Prepare contact rows with formatted dates
+    // Prepare contact rows with formatted dates (absolute for spreadsheet)
     const rows = state.contacts.map(contact => [
       contact.name || '',
       contact.relationship || '',
       contact.company || '',
       contact.linkedin || '',
       contact.lastContact ? formatDate(contact.lastContact) : '',
-      contact.addedDate ? formatDateTime(contact.addedDate) : '',
+      contact.addedDate ? formatDateTime(contact.addedDate, true) : '',
       contact.notes || ''
     ]);
     
