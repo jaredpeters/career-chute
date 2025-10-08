@@ -806,7 +806,7 @@ progress::-webkit-progress-value {
 @media (max-width: 768px) {
   .screen {
     padding: 16px;
-    padding-bottom: 80px;
+    padding-bottom: 120px; /* Extra padding to clear bottom nav + floating buttons */
   }
   
   #focusMode {
@@ -1901,6 +1901,10 @@ let state = {
     autoSync: true,
     lastScanTime: null,
     lastScanResults: { added: 0, duplicates: 0, emailsProcessed: 0 }
+  },
+  roleGrades: {
+    // Role titles mapped to grades: 'A', 'B', 'C', or 'ungraded' (gray)
+    // Example: 'Solutions Engineer': 'A', 'Account Executive': 'B'
   }
 };
 
@@ -3654,10 +3658,12 @@ function renderPlanScreen() {
   document.getElementById('planEventsTarget').textContent = state.targets.events;
   
   const appsList = document.getElementById('appsList');
-  if (state.applications.length === 0) {
-    appsList.innerHTML = '<div class="empty-state"><div class="empty-state-emoji">💼</div><p>No applications yet</p></div>';
+  const pipelineApps = state.applications.filter(app => app.status !== 'queued');
+  
+  if (pipelineApps.length === 0) {
+    appsList.innerHTML = '<div class="empty-state"><div class="empty-state-emoji">💼</div><p>No applications in pipeline yet</p><p style="font-size: 14px;">Add jobs from the Job Queue</p></div>';
   } else {
-    appsList.innerHTML = state.applications.map(app => `
+    appsList.innerHTML = pipelineApps.map(app => `
       <div class="list-item">
         <div style="flex: 1;">
           <div class="list-item-title">
@@ -5547,30 +5553,33 @@ function renderJobRow(job) {
 }
 
 function calculateJobScore(job) {
-  // Use a deterministic score based on job properties
-  let score = 50; // Base score
+  // Primary scoring based on role grade (manual user grading)
+  const roleTitle = (job.role || '').trim();
+  const grade = state.roleGrades[roleTitle];
   
-  // Title-based scoring
-  const title = (job.role || '').toLowerCase();
-  if (title.includes('solutions engineer') || title.includes('sales engineer') || title.includes('customer success engineer')) {
-    score += 30;
-  } else if (title.includes('account manager') || title.includes('business development')) {
-    score += 20;
-  } else if (title.includes('customer service') || title.includes('data entry')) {
-    score -= 20;
+  let score = 50; // Base score for ungraded roles
+  
+  // Grade-based scoring (most important factor)
+  if (grade === 'A') {
+    score = 85; // Excellent fit
+  } else if (grade === 'B') {
+    score = 65; // Moderate fit
+  } else if (grade === 'C') {
+    score = 35; // Low fit
   }
   
-  // Company-based scoring (if available)
+  // Small bonus for tech companies (if available)
   if (job.company) {
     const company = job.company.toLowerCase();
     if (company.includes('tech') || company.includes('saas') || company.includes('software')) {
-      score += 10;
+      score += 5;
     }
   }
   
-  // Status-based scoring
-  if (job.status === 'sent') score += 5;
-  if (job.status === 'interview') score += 10;
+  // Status-based bonus
+  if (job.status === 'pipeline') score += 5;
+  if (job.status === 'sent') score += 10;
+  if (job.status === 'interview') score += 15;
   
   return Math.min(100, Math.max(0, score));
 }
@@ -6272,54 +6281,80 @@ function closeJobPrioritizationSettings() {
 
 function renderPrioritizationSettings() {
   const container = document.getElementById('prioritizationSettings');
+  
+  // Get unique role titles from all applications
+  const roleSet = new Set();
+  state.applications.forEach(app => {
+    if (app.role) {
+      roleSet.add(app.role.trim());
+    }
+  });
+  
+  const roles = Array.from(roleSet).sort();
+  
   container.innerHTML = `
-    <div style="display: grid; gap: 20px;">
-      <div>
-        <h4>Scoring Weights</h4>
-        <div style="display: grid; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label>Job Title Fit</label>
-            <input type="range" min="0" max="50" value="30" style="width: 200px;">
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label>Location Preference</label>
-            <input type="range" min="0" max="50" value="20" style="width: 200px;">
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label>Salary Alignment</label>
-            <input type="range" min="0" max="50" value="15" style="width: 200px;">
-          </div>
-        </div>
+    <div style="display: grid; gap: 16px;">
+      <div style="background: var(--panel-hover); padding: 12px; border-radius: 8px; font-size: 13px;">
+        <strong>How it works:</strong> Click each role title to cycle through grades:<br>
+        <span style="background: #6b7280; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Gray</span> = Ungraded
+        <span style="background: #16a34a; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Green</span> = Grade A (Excellent Fit)
+        <span style="background: #ea580c; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Orange</span> = Grade B (Moderate Fit)
+        <span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; margin: 4px 4px 0 0;">Red</span> = Grade C (Low Fit)
       </div>
       
       <div>
-        <h4>Job Title Grades</h4>
-        <div style="display: grid; gap: 8px; font-size: 12px;">
-          <div><strong>Grade A (Excellent Fit):</strong> Solutions Engineer, Sales Engineer, Customer Success Engineer...</div>
-          <div><strong>Grade B (Moderate Fit):</strong> Account Manager, Business Development Manager...</div>
-          <div><strong>Grade C (Low Fit):</strong> Customer Service Rep, Data Entry Clerk...</div>
-        </div>
+        <h4 style="margin: 0 0 12px 0;">Role Title Grades</h4>
+        ${roles.length === 0 ? 
+          '<p style="color: var(--text-muted); font-size: 14px;">No roles yet. Scan Gmail or add jobs manually to see role titles here.</p>' :
+          `<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            ${roles.map(role => {
+              const grade = state.roleGrades[role] || 'ungraded';
+              const colors = {
+                'A': { bg: '#16a34a', text: 'white' },
+                'B': { bg: '#ea580c', text: 'white' },
+                'C': { bg: '#dc2626', text: 'white' },
+                'ungraded': { bg: '#6b7280', text: 'white' }
+              };
+              const color = colors[grade];
+              
+              return `<button 
+                onclick="cycleRoleGrade('${role.replace(/'/g, "\\'")}')" 
+                style="
+                  background: ${color.bg}; 
+                  color: ${color.text}; 
+                  border: none; 
+                  padding: 6px 12px; 
+                  border-radius: 6px; 
+                  font-size: 12px; 
+                  cursor: pointer;
+                  transition: opacity 0.2s;
+                "
+                onmouseover="this.style.opacity='0.8'"
+                onmouseout="this.style.opacity='1'"
+                title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+              >${role}</button>`;
+            }).join('')}
+          </div>`
+        }
       </div>
       
-      <div>
-        <h4>Your Preferences</h4>
-        <div style="display: grid; gap: 12px;">
-          <div>
-            <label>Preferred Location Type</label>
-            <select style="width: 100%; padding: 8px; border-radius: 6px;">
-              <option value="remote">Remote</option>
-              <option value="hybrid">Hybrid</option>
-              <option value="onsite">Onsite</option>
-            </select>
-          </div>
-          <div>
-            <label>Target Salary Range</label>
-            <input type="text" placeholder="e.g., 80000-120000" style="width: 100%; padding: 8px; border-radius: 6px;">
-          </div>
-        </div>
+      <div style="padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-muted);">
+        💡 <strong>Tip:</strong> New roles discovered from email scanning will automatically appear here as gray (ungraded). Grade them to improve job prioritization!
       </div>
     </div>
   `;
+}
+
+function cycleRoleGrade(roleTitle) {
+  const currentGrade = state.roleGrades[roleTitle] || 'ungraded';
+  const gradeOrder = ['ungraded', 'A', 'B', 'C'];
+  const currentIndex = gradeOrder.indexOf(currentGrade);
+  const nextIndex = (currentIndex + 1) % gradeOrder.length;
+  
+  state.roleGrades[roleTitle] = gradeOrder[nextIndex];
+  saveToFirebase();
+  renderPrioritizationSettings();
+  renderJobQueue(); // Update the job queue to reflect new priorities
 }
 
 function syncToUserId() {
