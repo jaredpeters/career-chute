@@ -1951,6 +1951,33 @@ function formatDate(dateStr) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function formatDateTime(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  // Relative time for recent dates
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  
+  // Absolute date for older dates
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  }) + ' ' + date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  });
+}
+
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
@@ -5436,13 +5463,12 @@ function updateGmailUI() {
     
     // Show last scan info if available
     if (state.gmail.lastScanTime) {
-      const lastScanDate = new Date(state.gmail.lastScanTime);
       const lastScanInfo = document.getElementById('gmailLastScan');
       if (lastScanInfo) {
         lastScanInfo.innerHTML = `
           <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
-            Last scan: ${lastScanDate.toLocaleString()}<br>
-            Added: ${state.gmail.lastScanResults.added} tasks, 
+            Last scan: ${formatDateTime(state.gmail.lastScanTime)}<br>
+            Added: ${state.gmail.lastScanResults.added} jobs, 
             Duplicates: ${state.gmail.lastScanResults.duplicates}, 
             Processed: ${state.gmail.lastScanResults.emailsProcessed} emails
           </div>
@@ -5706,7 +5732,7 @@ async function syncToGoogleSheets() {
       await initializeSpreadsheet();
     }
     
-    // Prepare data rows
+    // Prepare data rows with formatted dates
     const rows = state.applications.map(app => [
       app.company || '',
       app.role || '',
@@ -5715,9 +5741,9 @@ async function syncToGoogleSheets() {
       app.salary || '',
       app.location || '',
       app.status || 'queued',
-      app.addedToQueue || '',
-      app.addedToPipeline || '',
-      app.appliedDate || '',
+      app.addedToQueue ? formatDateTime(app.addedToQueue) : '',
+      app.addedToPipeline ? formatDateTime(app.addedToPipeline) : '',
+      app.appliedDate ? formatDate(app.appliedDate) : '',
       app.notes || '',
       app.url || ''
     ]);
@@ -5798,14 +5824,14 @@ async function syncContactsToGoogleSheets() {
       });
     }
     
-    // Prepare contact rows
+    // Prepare contact rows with formatted dates
     const rows = state.contacts.map(contact => [
       contact.name || '',
       contact.relationship || '',
       contact.company || '',
       contact.linkedin || '',
-      contact.lastContact || '',
-      contact.addedDate || '',
+      contact.lastContact ? formatDate(contact.lastContact) : '',
+      contact.addedDate ? formatDateTime(contact.addedDate) : '',
       contact.notes || ''
     ]);
     
