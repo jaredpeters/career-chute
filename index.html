@@ -1262,6 +1262,14 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
+  <!-- City Grading Section -->
+  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+    <h3 style="margin: 0 0 16px 0; font-size: 16px;">City Grading Rules</h3>
+    <div id="cityGradingSettings">
+      <!-- Settings will be populated by JavaScript -->
+    </div>
+  </div>
+  
   <!-- Job Queue Controls -->
   <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
     <button class="modern-button primary" onclick="scanJobAlerts()" title="Scan Gmail for new job postings">
@@ -1943,6 +1951,10 @@ let state = {
   blockedEmployers: {
     // List of company names that should be blocked from future imports
     // Example: 'Spam Company': true, 'Bad Employer': true
+  },
+  cityGrades: {
+    // Cities mapped to grades: 'A', 'B', 'C', or 'ungraded' (gray)
+    // Example: 'Los Angeles': 'A', 'Santa Monica': 'A', 'Beverly Hills': 'B'
   }
 };
 
@@ -2270,6 +2282,7 @@ function showScreen(screenId) {
   if (screenId === 'progress') renderProgress();
   if (screenId === 'jobs') {
     renderPrioritizationSettings();
+    renderCityGradingSettings();
     renderJobQueue();
   }
   if (screenId === 'settings') renderSettings();
@@ -5664,8 +5677,42 @@ function renderJobRow(job) {
       <div style="text-align: center; color: var(--muted); font-size: 12px;">
         ${job.salary || 'N/A'}
       </div>
-      <div style="text-align: center; color: var(--muted); font-size: 12px;">
-        ${job.location || 'N/A'}
+      <div style="text-align: center;">
+        ${job.location ? (() => {
+          const city = job.location.split(',')[0].trim();
+          const grade = state.cityGrades[city] || 'ungraded';
+          const gradeColors = {
+            'A': { bg: '#16a34a', text: 'white' },
+            'B': { bg: '#ea580c', text: 'white' },
+            'C': { bg: '#dc2626', text: 'white' },
+            'ungraded': { bg: '#6b7280', text: 'white' }
+          };
+          const color = gradeColors[grade];
+          
+          return `<button 
+            onclick="cycleCityGrade('${city.replace(/'/g, "\\'")}')" 
+            data-city="${city}"
+            style="
+              background: ${color.bg}; 
+              color: ${color.text}; 
+              border: none; 
+              padding: 3px 8px; 
+              border-radius: 4px; 
+              font-size: 10px; 
+              cursor: pointer;
+              transition: opacity 0.2s;
+              white-space: normal;
+              word-wrap: break-word;
+              height: auto;
+              min-height: 20px;
+              display: inline-block;
+              text-align: center;
+            "
+            onmouseover="this.style.opacity='0.8'"
+            onmouseout="this.style.opacity='1'"
+            title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+          >${city}</button>`;
+        })() : 'N/A'}
       </div>
       <div style="text-align: center;">
         <span style="background: ${statusColor}; color: white; padding: 3px 6px; border-radius: 10px; font-size: 10px;">
@@ -6136,6 +6183,18 @@ async function scanJobAlerts() {
             console.log('Skipping Grade C job:', jobData.company, '-', jobData.role);
             skippedCount++;
             continue;
+          }
+          
+          // Check if city is marked as Grade C (red) - skip these
+          if (jobData.location) {
+            const city = jobData.location.split(',')[0].trim();
+            const cityGrade = state.cityGrades[city];
+            
+            if (cityGrade === 'C') {
+              console.log('Skipping Grade C city job:', jobData.company, '-', jobData.role, 'in', city);
+              skippedCount++;
+              continue;
+            }
           }
           
           // Add to applications
@@ -6887,6 +6946,117 @@ function updateRoleColors(roleTitle, grade) {
       btn.title = `Click to cycle grade: ${gradeLabel}`;
     }
   });
+}
+
+function cycleCityGrade(cityName) {
+  const currentGrade = state.cityGrades[cityName] || 'ungraded';
+  const gradeOrder = ['ungraded', 'A', 'B', 'C'];
+  const currentIndex = gradeOrder.indexOf(currentGrade);
+  const nextIndex = (currentIndex + 1) % gradeOrder.length;
+  const newGrade = gradeOrder[nextIndex];
+  
+  state.cityGrades[cityName] = newGrade;
+  saveToFirebase();
+  updateCityColors(cityName, newGrade);
+}
+
+function updateCityColors(cityName, grade) {
+  const gradeColors = {
+    'A': { bg: '#16a34a', text: 'white' },
+    'B': { bg: '#ea580c', text: 'white' },
+    'C': { bg: '#dc2626', text: 'white' },
+    'ungraded': { bg: '#6b7280', text: 'white' }
+  };
+  
+  const color = gradeColors[grade];
+  
+  // Update all city buttons with this city name
+  document.querySelectorAll(`[data-city="${cityName}"]`).forEach(button => {
+    button.style.background = color.bg;
+    button.style.color = color.text;
+  });
+}
+
+function renderCityGradingSettings() {
+  const container = document.getElementById('cityGradingSettings');
+  if (!container) return;
+  
+  // Get unique cities from all applications
+  const citySet = new Set();
+  state.applications.forEach(app => {
+    if (app.location) {
+      // Extract city from location (handle "Los Angeles, CA" format)
+      const city = app.location.split(',')[0].trim();
+      citySet.add(city);
+    }
+  });
+  
+  // Sort cities by grade: A (green), B (orange), C (red), ungraded (gray)
+  const cities = Array.from(citySet).sort((a, b) => {
+    const gradeOrder = { 'A': 0, 'B': 1, 'C': 2, 'ungraded': 3 };
+    const gradeA = state.cityGrades[a] || 'ungraded';
+    const gradeB = state.cityGrades[b] || 'ungraded';
+    
+    const orderDiff = gradeOrder[gradeA] - gradeOrder[gradeB];
+    if (orderDiff !== 0) return orderDiff;
+    
+    // If same grade, sort alphabetically
+    return a.localeCompare(b);
+  });
+  
+  container.innerHTML = `
+    <div style="display: grid; gap: 16px;">
+      <div style="background: var(--panel-hover); padding: 10px; border-radius: 8px; font-size: 11px;">
+        <strong>Click cities to cycle colors:</strong>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+          <span style="background: #6b7280; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Gray = Ungraded</span>
+          <span style="background: #16a34a; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Green = Grade A</span>
+          <span style="background: #ea580c; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Orange = Grade B</span>
+          <span style="background: #dc2626; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Red = Grade C</span>
+        </div>
+      </div>
+      
+      ${cities.length === 0 ? 
+        '<p style="color: var(--text-muted); font-size: 13px; margin: 0;">No cities yet. Scan Gmail or add jobs manually to see cities here.</p>' :
+        `<div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${cities.map(city => {
+            const grade = state.cityGrades[city] || 'ungraded';
+            const colors = {
+              'A': { bg: '#16a34a', text: 'white' },
+              'B': { bg: '#ea580c', text: 'white' },
+              'C': { bg: '#dc2626', text: 'white' },
+              'ungraded': { bg: '#6b7280', text: 'white' }
+            };
+            const color = colors[grade];
+            
+            return `<button 
+              onclick="cycleCityGrade('${city.replace(/'/g, "\\'")}')" 
+              data-city="${city}"
+              style="
+                background: ${color.bg}; 
+                color: ${color.text}; 
+                border: none; 
+                padding: 3px 8px; 
+                border-radius: 4px; 
+                font-size: 10px; 
+                cursor: pointer;
+                transition: opacity 0.2s;
+                white-space: normal;
+                word-wrap: break-word;
+                height: auto;
+                min-height: 20px;
+                display: inline-block;
+                text-align: center;
+              "
+              onmouseover="this.style.opacity='0.8'"
+              onmouseout="this.style.opacity='1'"
+              title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+            >${city}</button>`;
+          }).join('')}
+        </div>`
+      }
+    </div>
+  `;
 }
 
 function syncToUserId() {
