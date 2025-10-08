@@ -1281,7 +1281,7 @@ progress::-webkit-progress-value {
   </div>
   
   <!-- Job Queue Table -->
-  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;">
+  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 120px;">
     <div id="jobQueueTable">
       <!-- Table will be populated by JavaScript -->
     </div>
@@ -5538,15 +5538,16 @@ function renderJobQueue() {
     return;
   }
   
-  // Create table header (removed Score and Priority columns)
+  // Create table header (added Source column)
   const tableHTML = `
-    <div style="display: grid; grid-template-columns: 30px 2.5fr 100px 100px 70px 100px; gap: 8px; padding: 10px 12px; background: var(--glass-bg); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 13px;">
+    <div style="display: grid; grid-template-columns: 30px 2.5fr 80px 100px 100px 70px 100px; gap: 8px; padding: 10px 12px; background: var(--glass-bg); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 13px;">
       <div>✓</div>
       <div>Company & Role</div>
-      <div>Salary</div>
-      <div>Location</div>
-      <div>Status</div>
-      <div>Actions</div>
+      <div style="text-align: center;">Source</div>
+      <div style="text-align: center;">Salary</div>
+      <div style="text-align: center;">Location</div>
+      <div style="text-align: center;">Status</div>
+      <div style="text-align: center;">Actions</div>
     </div>
     <div id="jobQueueRows">
       ${jobs.map(job => renderJobRow(job)).join('')}
@@ -5568,8 +5569,11 @@ function renderJobRow(job) {
   };
   const roleColor = gradeColors[grade];
   
+  // Determine source from job data
+  const source = job.source || (job.notes ? job.notes.replace('Found via ', '').replace(' job alert', '') : 'Unknown');
+  
   return `
-    <div style="display: grid; grid-template-columns: 30px 2.5fr 100px 100px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
+    <div style="display: grid; grid-template-columns: 30px 2.5fr 80px 100px 100px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
       <div>
         <input type="checkbox" onchange="updateSelectedCount()" data-job-id="${job.id}" style="width: 14px; height: 14px;">
       </div>
@@ -5597,6 +5601,9 @@ function renderJobRow(job) {
           onmouseout="this.style.opacity='1'"
           title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
         >${job.role}</button>
+      </div>
+      <div style="text-align: center; color: var(--muted); font-size: 11px;">
+        ${source}
       </div>
       <div style="text-align: center; color: var(--muted); font-size: 12px;">
         ${job.salary || 'N/A'}
@@ -5754,15 +5761,14 @@ async function initializeSpreadsheet() {
     // Add header row with ID column first
     await gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
-      range: 'Job Queue!A1:M1',
+      range: 'Job Queue!A1:N1',
       valueInputOption: 'RAW',
       resource: {
         values: [[
           'ID',
           'Company',
           'Role',
-          'Match Score',
-          'Priority',
+          'Source',
           'Salary',
           'Location',
           'Status',
@@ -5809,7 +5815,7 @@ async function syncToGoogleSheets() {
     // Read existing sheet data to find rows by ID
     const existingData = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: state.sheets.spreadsheetId,
-      range: 'Job Queue!A2:M1000' // Read up to 1000 rows
+      range: 'Job Queue!A2:N1000' // Read up to 1000 rows
     });
     
     const existingRows = existingData.result.values || [];
@@ -5826,12 +5832,14 @@ async function syncToGoogleSheets() {
     
     // Process each pipeline job
     for (const app of pipelineJobs) {
+      // Determine source from job data
+      const source = app.source || (app.notes ? app.notes.replace('Found via ', '').replace(' job alert', '') : 'Unknown');
+      
       const rowData = [
         app.id,
         app.company || '',
         app.role || '',
-        app.matchScore || calculateJobScore(app),
-        app.priority || getJobPriority(app),
+        source,
         app.salary || '',
         app.location || '',
         app.status || '',
@@ -5847,7 +5855,7 @@ async function syncToGoogleSheets() {
         const rowNumber = existingIds.get(app.id);
         await gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId: state.sheets.spreadsheetId,
-          range: `Job Queue!A${rowNumber}:M${rowNumber}`,
+          range: `Job Queue!A${rowNumber}:N${rowNumber}`,
           valueInputOption: 'RAW',
           resource: { values: [rowData] }
         });
@@ -6159,10 +6167,10 @@ function parseJobEmail(message) {
       return parseGlassdoorJob(subject, body);
     } else if (from.includes('greenhouse.io') || from.includes('lever.co')) {
       return parseATSJob(subject, body);
+    } else {
+      // Try generic parsing for other job sources
+      return parseGenericJob(subject, body, from);
     }
-    
-    console.log('Email source not recognized:', from);
-    return null;
   } catch (error) {
     console.error('Error parsing email:', error);
     return null;
@@ -6361,6 +6369,87 @@ function parseATSJob(subject, body) {
     salary: '',
     url,
     notes: 'Found via ATS job alert'
+  };
+}
+
+function parseGenericJob(subject, body, from) {
+  // Generic parser for unknown job sources
+  // Handle formats like:
+  // "Data Clean for Customer Success Manager. Apply Now."
+  // "Go2Zero Strategies, Bruno Independent Living Aids in Los Angeles, CA. Apply Now."
+  // "SpaceX for Customer Success Specialist (Starlink). Apply Now."
+  
+  let company = '';
+  let role = '';
+  let location = '';
+  
+  // Try to extract from subject line
+  // Pattern 1: "Company for Role. Apply Now."
+  let match = subject.match(/(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i);
+  if (match) {
+    company = match[1].trim();
+    role = match[2].trim();
+  } else {
+    // Pattern 2: "Company1, Company2 in Location. Apply Now."
+    match = subject.match(/(.+?)\s+in\s+(.+?)\.\s*Apply\s+Now/i);
+    if (match) {
+      // Split companies if there are multiple
+      const companies = match[1].split(',').map(c => c.trim());
+      company = companies[0]; // Take first company
+      location = match[2].trim();
+      role = 'Multiple Companies'; // Generic role for multi-company listings
+    } else {
+      // Pattern 3: "Company is hiring: Role"
+      match = subject.match(/(.+?)\s+is\s+hiring[:\s]+(.+)/i);
+      if (match) {
+        company = match[1].trim();
+        role = match[2].trim();
+      } else {
+        // Fallback: use subject as role, try to extract company from body
+        role = subject;
+        const companyMatch = body.match(/company[:\s]+([^<\n]+)/i);
+        company = companyMatch ? companyMatch[1].trim() : 'Unknown';
+      }
+    }
+  }
+  
+  // Try to extract location from body if not found in subject
+  if (!location) {
+    const locationMatch = body.match(/location[:\s]+([^<\n]+)/i) || 
+                         body.match(/([A-Z][a-z]+,\s*[A-Z]{2})/);
+    location = locationMatch ? locationMatch[1].trim() : '';
+  }
+  
+  // Try to extract salary
+  const salaryMatch = body.match(/\$[\d,]+\s*-\s*\$[\d,]+/);
+  const salary = salaryMatch ? salaryMatch[0] : '';
+  
+  // Try to extract URL
+  const urlMatch = body.match(/https?:\/\/[^\s"<]+/);
+  const url = urlMatch ? urlMatch[0] : '';
+  
+  // Determine source from email domain
+  let source = 'Unknown';
+  if (from.includes('linkedin.com')) source = 'LinkedIn';
+  else if (from.includes('indeed.com')) source = 'Indeed';
+  else if (from.includes('glassdoor.com')) source = 'Glassdoor';
+  else if (from.includes('ziprecruiter.com')) source = 'ZipRecruiter';
+  else if (from.includes('angel.co')) source = 'AngelList';
+  else if (from.includes('remote.co')) source = 'Remote.co';
+  else if (from.includes('weworkremotely.com')) source = 'WeWorkRemotely';
+  else {
+    // Extract domain from email
+    const domainMatch = from.match(/@(.+)/);
+    source = domainMatch ? domainMatch[1] : 'Unknown';
+  }
+  
+  return {
+    company,
+    role,
+    location,
+    salary,
+    url,
+    notes: `Found via ${source} job alert`
   };
 }
 
