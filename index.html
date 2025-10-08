@@ -1985,7 +1985,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.2.3'; // Fix Google Sheets API loading
+const APP_VERSION = '3.2.4'; // Add Client ID and fix Open Sheet button
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -2023,7 +2023,7 @@ let state = {
   },
   google: {
     connected: false,
-    clientId: '',
+    clientId: '906932405437-9r5i8d63ssle5sqas1fob1k7u4k57bfq.apps.googleusercontent.com',
     accessToken: null,
     lastConnected: null,
   },
@@ -6316,6 +6316,7 @@ async function initializeSpreadsheet() {
     });
     
     saveToFirebase();
+    updateSheetsUI();
     console.log('Spreadsheet created:', spreadsheetUrl);
     alert(`Spreadsheet created!\n\nOpen it here:\n${spreadsheetUrl}`);
     

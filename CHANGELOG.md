@@ -4,6 +4,17 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.2.4] - 2025-10-08
+
+### 🔧 ADDED
+- **Pre-configured Client ID**: Your Google Client ID is now stored by default
+- **Open Sheet Button**: "Open Sheet" button now appears after spreadsheet creation
+- **UI Updates**: Proper UI refresh after spreadsheet creation
+
+### 🛠️ FIXED
+- **Missing Button**: "Open Sheet" button was hidden due to missing UI update call
+- **Client ID Storage**: No need to re-enter your Google Client ID
+
 ## [3.2.3] - 2025-10-08
 
 ### 🛠️ FIXED
