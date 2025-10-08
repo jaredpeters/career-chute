@@ -1959,6 +1959,52 @@ let state = {
   blockedCities: {
     // Cities that should be completely blocked from future imports
     // Example: 'New York': true, 'Chicago': true
+  },
+  emailParsers: {
+    // Configurable field mapping rules for different email sources
+    // Similar to Zapier/Make.com field mapping
+    linkedin: {
+      patterns: {
+        subject: [
+          /(.+?)\s+at\s+(.+?)\s+in\s+(.+?)(?:\s+and\s+\d+\s+more|$)/i,
+          /(.+?)\s+@\s+(.+)/i
+        ],
+        body: {
+          company: [/company[:\s]+([^<\n]+)/i, /at\s+([^<\n]+)/i],
+          location: [/location[:\s]+([^<\n]+)/i, /([A-Z][a-z]+,\s*[A-Z]{2})/],
+          salary: [/\$[\d,]+\s*-\s*\$[\d,]+/],
+          url: [/https:\/\/www\.linkedin\.com[^\s"<]+/]
+        }
+      }
+    },
+    indeed: {
+      patterns: {
+        subject: [
+          /(.+?)\s+at\s+(.+?)\s+in\s+(.+?)(?:\s+and\s+\d+\s+more|$)/i,
+          /(.+?)\s+@\s+(.+)/i
+        ],
+        body: {
+          company: [/company[:\s]+([^<\n]+)/i],
+          location: [/location[:\s]+([^<\n]+)/i, /([A-Z][a-z]+,\s*[A-Z]{2})/],
+          salary: [/\$[\d,]+\s*-\s*\$[\d,]+/],
+          url: [/https:\/\/[^\s"<]+/]
+        }
+      }
+    },
+    glassdoor: {
+      patterns: {
+        subject: [
+          /(.+?)\s+in\s+(.+?)\.\s*Apply\s+Now/i,
+          /(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i
+        ],
+        body: {
+          company: [/company[:\s]+([^<\n]+)/i],
+          location: [/location[:\s]+([^<\n]+)/i],
+          salary: [/\$[\d,]+\s*-\s*\$[\d,]+/],
+          url: [/https:\/\/www\.glassdoor\.com[^\s"<]+/]
+        }
+      }
+    }
   }
 };
 
@@ -6140,8 +6186,21 @@ async function scanJobAlerts() {
   
   // Make sure Gmail API is loaded
   if (!gapi || !gapi.client || !gapi.client.gmail) {
-    alert('Gmail API not ready. Please:\n1. Disconnect and reconnect Gmail\n2. Wait a moment after connecting\n3. Try scanning again');
-    return;
+    console.log('Gmail API not ready, attempting to reinitialize...');
+    try {
+      await initGoogleAPI();
+      // Wait a moment for initialization
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (!gapi.client.gmail) {
+        alert('Gmail API still not ready. Please:\n1. Disconnect and reconnect Gmail\n2. Wait a moment after connecting\n3. Try scanning again');
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to reinitialize Gmail API:', error);
+      alert('Gmail API not ready. Please:\n1. Disconnect and reconnect Gmail\n2. Wait a moment after connecting\n3. Try scanning again');
+      return;
+    }
   }
   
   try {
@@ -6157,13 +6216,25 @@ async function scanJobAlerts() {
     });
     
     // Search for job alert emails from the last 7 days (expanded sources)
-    const query = 'from:(linkedin.com OR indeed.com OR glassdoor.com OR greenhouse.io OR lever.co OR ziprecruiter.com OR angel.co OR remote.co OR weworkremotely.com) subject:(job OR hiring OR position OR opportunity OR career) newer_than:7d';
+    // Search for job alert emails - start with unread, then fall back to older emails
+    let query = 'from:(linkedin.com OR indeed.com OR glassdoor.com OR greenhouse.io OR lever.co OR ziprecruiter.com OR angel.co OR remote.co OR weworkremotely.com) subject:(job OR hiring OR position OR opportunity OR career) is:unread newer_than:30d';
     
-    const response = await gapi.client.gmail.users.messages.list({
+    // If no unread emails, search older emails
+    let response = await gapi.client.gmail.users.messages.list({
       userId: 'me',
       q: query,
       maxResults: 50
     });
+    
+    if (!response.result.messages || response.result.messages.length === 0) {
+      console.log('No unread job emails found, searching older emails...');
+      query = 'from:(linkedin.com OR indeed.com OR glassdoor.com OR greenhouse.io OR lever.co OR ziprecruiter.com OR angel.co OR remote.co OR weworkremotely.com) subject:(job OR hiring OR position OR opportunity OR career) newer_than:30d';
+      response = await gapi.client.gmail.users.messages.list({
+        userId: 'me',
+        q: query,
+        maxResults: 50
+      });
+    }
     
     const messages = response.result.messages || [];
     console.log(`Found ${messages.length} job alert emails`);
@@ -6241,6 +6312,20 @@ async function scanJobAlerts() {
           
           state.applications.push(newJob);
           addedCount++;
+          
+          // Mark email as read
+          try {
+            await gapi.client.gmail.users.messages.modify({
+              userId: 'me',
+              id: message.id,
+              resource: {
+                removeLabelIds: ['UNREAD']
+              }
+            });
+            console.log('Marked email as read:', message.id);
+          } catch (error) {
+            console.warn('Failed to mark email as read:', error);
+          }
         } else {
           duplicateCount++;
         }
@@ -6313,19 +6398,26 @@ function parseJobEmail(message) {
       }
     }
     
-    // Extract job details based on source
-    if (from.includes('linkedin.com')) {
-      return parseLinkedInJob(subject, body);
-    } else if (from.includes('indeed.com')) {
-      return parseIndeedJob(subject, body);
-    } else if (from.includes('glassdoor.com')) {
-      return parseGlassdoorJob(subject, body);
-    } else if (from.includes('greenhouse.io') || from.includes('lever.co')) {
-      return parseATSJob(subject, body);
-    } else {
-      // Try generic parsing for other job sources
-      return parseGenericJob(subject, body, from);
+    // Use universal field mapper first
+    let jobData = mapEmailFields(subject, body, from);
+    
+    // Fallback to specific parsers if field mapper fails
+    if (!jobData || jobData.company === 'Unknown' || jobData.role === 'Various Roles') {
+      if (from.includes('linkedin.com')) {
+        return parseLinkedInJob(subject, body);
+      } else if (from.includes('indeed.com')) {
+        return parseIndeedJob(subject, body);
+      } else if (from.includes('glassdoor.com')) {
+        return parseGlassdoorJob(subject, body);
+      } else if (from.includes('greenhouse.io') || from.includes('lever.co')) {
+        return parseATSJob(subject, body);
+      } else {
+        // Try generic parsing for other job sources
+        return parseGenericJob(subject, body, from);
+      }
     }
+    
+    return jobData;
   } catch (error) {
     console.error('Error parsing email:', error);
     return null;
@@ -6528,6 +6620,116 @@ function parseATSJob(subject, body) {
     url,
     source: 'ATS',
     notes: 'Found via ATS job alert'
+  };
+}
+
+// Universal field mapper - similar to Zapier/Make.com
+function mapEmailFields(subject, body, from) {
+  // Determine source from email domain
+  let source = 'Unknown';
+  if (from.includes('linkedin.com')) source = 'linkedin';
+  else if (from.includes('indeed.com')) source = 'indeed';
+  else if (from.includes('glassdoor.com')) source = 'glassdoor';
+  else if (from.includes('ziprecruiter.com')) source = 'ziprecruiter';
+  else if (from.includes('angel.co')) source = 'angel';
+  else if (from.includes('remote.co')) source = 'remote';
+  else if (from.includes('weworkremotely.com')) source = 'weworkremotely';
+  else {
+    const domainMatch = from.match(/@(.+)/);
+    source = domainMatch ? domainMatch[1] : 'unknown';
+  }
+  
+  // Get parser config for this source
+  const parserConfig = state.emailParsers[source] || state.emailParsers.linkedin; // fallback
+  
+  let company = '';
+  let role = '';
+  let location = '';
+  let salary = '';
+  let url = '';
+  
+  // Try subject line patterns first
+  for (const pattern of parserConfig.patterns.subject) {
+    const match = subject.match(pattern);
+    if (match) {
+      if (pattern.source.includes('at') && pattern.source.includes('in')) {
+        // Format: "Role at Company in Location"
+        role = match[1]?.trim() || '';
+        company = match[2]?.trim() || '';
+        location = match[3]?.trim() || '';
+      } else if (pattern.source.includes('@')) {
+        // Format: "Role @ Company"
+        role = match[1]?.trim() || '';
+        company = match[2]?.trim() || '';
+      } else if (pattern.source.includes('for')) {
+        // Format: "Company for Role"
+        company = match[1]?.trim() || '';
+        role = match[2]?.trim() || '';
+      } else if (pattern.source.includes('in') && pattern.source.includes('Apply')) {
+        // Format: "Company in Location. Apply Now"
+        company = match[1]?.trim() || '';
+        location = match[2]?.trim() || '';
+        role = 'Various Roles';
+      }
+      break; // Use first successful match
+    }
+  }
+  
+  // Try body patterns for missing fields
+  if (!company && parserConfig.patterns.body.company) {
+    for (const pattern of parserConfig.patterns.body.company) {
+      const match = body.match(pattern);
+      if (match) {
+        company = match[1]?.trim() || '';
+        break;
+      }
+    }
+  }
+  
+  if (!location && parserConfig.patterns.body.location) {
+    for (const pattern of parserConfig.patterns.body.location) {
+      const match = body.match(pattern);
+      if (match) {
+        location = match[1]?.trim() || '';
+        break;
+      }
+    }
+  }
+  
+  if (!salary && parserConfig.patterns.body.salary) {
+    for (const pattern of parserConfig.patterns.body.salary) {
+      const match = body.match(pattern);
+      if (match) {
+        salary = match[0] || '';
+        break;
+      }
+    }
+  }
+  
+  if (!url && parserConfig.patterns.body.url) {
+    for (const pattern of parserConfig.patterns.body.url) {
+      const match = body.match(pattern);
+      if (match) {
+        url = match[0] || '';
+        break;
+      }
+    }
+  }
+  
+  // Fallback if nothing was found
+  if (!company && !role) {
+    company = 'Unknown';
+    role = subject;
+  }
+  
+  return {
+    company: company || 'Unknown',
+    role: role || 'Various Roles',
+    location: location || '',
+    salary: salary || '',
+    url: url || '',
+    source: source.charAt(0).toUpperCase() + source.slice(1),
+    notes: `Found via ${source} job alert`
   };
 }
 
