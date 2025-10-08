@@ -4,6 +4,20 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.3.5] - 2025-10-08
+
+### 🛠️ FIXED: Gmail Element Error & CSV Debug
+- **Gmail Element Error**: Fixed null reference error for archived Gmail elements
+- **CSV Debug Logging**: Added detailed logging to parseCSVLine function
+- **App Loading**: App now loads properly without Gmail element errors
+- **Sync Stability**: Improved error handling for missing UI elements
+
+### 🔧 Technical Fixes
+- **Null Check**: Added check for gmailClientId element before accessing
+- **Debug Output**: Console logs show parsed CSV lines and column counts
+- **Error Prevention**: Prevents app crashes from missing archived elements
+- **Better Troubleshooting**: More detailed logging for CSV parsing issues
+
 ## [3.3.4] - 2025-10-08
 
 ### 🛠️ FIXED: Markdown Code Block Delimiters

@@ -2054,7 +2054,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.3.4'; // Fix markdown code block delimiters in CSV import
+const APP_VERSION = '3.3.5'; // Fix Gmail element error and add CSV debug logging
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -5497,8 +5497,8 @@ function renderSettings() {
     document.getElementById('guardrailsSettings').style.display = state.guardrails.enabled ? 'block' : 'none';
   }
   
-  // Update Gmail settings
-  if (state.gmail) {
+  // Update Gmail settings (if element exists)
+  if (state.gmail && document.getElementById('gmailClientId')) {
     document.getElementById('gmailClientId').value = state.gmail.clientId || '';
     updateGmailUI();
   }
@@ -6725,6 +6725,12 @@ function parseCSVLine(line) {
   }
   
   result.push(current.trim());
+  
+  // Debug logging
+  console.log('Parsed line:', line);
+  console.log('Result:', result);
+  console.log('Column count:', result.length);
+  
   return result;
 }
 
