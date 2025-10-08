@@ -1255,16 +1255,22 @@ progress::-webkit-progress-value {
   </div>
   
   <!-- Job Queue Controls -->
-  <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+  <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
     <button class="modern-button primary" onclick="scanJobAlerts()" title="Scan Gmail for new job postings">
       📧 Scan Gmail for Jobs
     </button>
     <button class="modern-button secondary" onclick="addJobManually()" title="Manually add a job to the queue">
       ➕ Add Job Manually
     </button>
+    <div style="border-left: 1px solid var(--line); height: 32px; margin: 0 4px;"></div>
+    <span style="font-size: 13px; color: var(--muted);" id="selectedCount">0 selected</span>
     <button class="modern-button secondary" onclick="addSelectedToPipeline()" title="Add selected jobs to your Applications Pipeline">
       📋 Add to Pipeline
     </button>
+    <button class="modern-button secondary" onclick="bulkDeleteJobs()" title="Delete selected jobs">
+      🗑️ Delete Selected
+    </button>
+    <div style="border-left: 1px solid var(--line); height: 32px; margin: 0 4px;"></div>
     <button class="modern-button secondary" onclick="openJobPrioritizationSettings()" title="Configure job scoring and prioritization">
       ⚙️ Prioritization Rules
     </button>
@@ -5467,7 +5473,7 @@ function renderJobRow(job) {
   return `
     <div style="display: grid; grid-template-columns: 30px 2fr 80px 70px 90px 90px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
       <div>
-        <input type="checkbox" onchange="toggleJobSelection('${job.id}')" style="width: 14px; height: 14px;">
+        <input type="checkbox" onchange="updateSelectedCount()" data-job-id="${job.id}" style="width: 14px; height: 14px;">
       </div>
       <div style="min-width: 0;">
         <div style="font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</div>
@@ -5495,9 +5501,8 @@ function renderJobRow(job) {
         </span>
       </div>
       <div style="display: flex; gap: 4px; justify-content: center;">
-        <button class="icon-btn" onclick="editJob('${job.id}')" title="Edit" style="font-size: 14px;">✏️</button>
-        <button class="icon-btn" onclick="deleteJob('${job.id}')" title="Delete" style="font-size: 14px;">🗑️</button>
-        <button class="icon-btn" onclick="viewJobDetails('${job.id}')" title="View" style="font-size: 14px;">👁️</button>
+        <button class="icon-btn" onclick="viewJobDetails('${job.id}')" title="View job details and link" style="font-size: 14px;">👁️</button>
+        <button class="icon-btn" onclick="deleteJob('${job.id}')" title="Remove from queue" style="font-size: 14px;">🗑️</button>
       </div>
     </div>
   `;
@@ -5727,12 +5732,23 @@ async function scanJobAlerts() {
     return;
   }
   
+  // Make sure Gmail API is loaded
+  if (!gapi.client.gmail) {
+    alert('Gmail API not ready. Please refresh the page and try again.');
+    return;
+  }
+  
   try {
     // Show progress
     const scanBtn = document.getElementById('scanEmailsBtn');
     const originalText = scanBtn.textContent;
     scanBtn.textContent = '🔄 Scanning...';
     scanBtn.disabled = true;
+    
+    // Set the access token for the API call
+    gapi.client.setToken({
+      access_token: state.gmail.accessToken
+    });
     
     // Search for job alert emails from the last 7 days
     const query = 'from:(jobs-noreply@linkedin.com OR indeed.com OR noreply@greenhouse.io OR jobs@lever.co) newer_than:7d';
@@ -5965,24 +5981,87 @@ function parseATSJob(subject, body) {
   };
 }
 
+function updateSelectedCount() {
+  const checkboxes = document.querySelectorAll('#jobQueueRows input[type="checkbox"]:checked');
+  const count = checkboxes.length;
+  const countEl = document.getElementById('selectedCount');
+  if (countEl) {
+    countEl.textContent = `${count} selected`;
+  }
+}
+
+function bulkDeleteJobs() {
+  const selectedCheckboxes = document.querySelectorAll('#jobQueueRows input[type="checkbox"]:checked');
+  const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-job-id'));
+  
+  if (selectedIds.length === 0) {
+    alert('Please select jobs to delete');
+    return;
+  }
+  
+  if (!confirm(`Are you sure you want to delete ${selectedIds.length} job(s) from the queue?`)) {
+    return;
+  }
+  
+  // Remove selected jobs
+  state.applications = state.applications.filter(app => !selectedIds.includes(app.id));
+  
+  saveToFirebase();
+  renderJobQueue();
+  
+  alert(`${selectedIds.length} job(s) deleted`);
+}
+
+function deleteJob(jobId) {
+  const job = state.applications.find(app => app.id === jobId);
+  if (!job) return;
+  
+  if (!confirm(`Delete ${job.company} - ${job.role}?`)) {
+    return;
+  }
+  
+  state.applications = state.applications.filter(app => app.id !== jobId);
+  saveToFirebase();
+  renderJobQueue();
+}
+
+function viewJobDetails(jobId) {
+  const job = state.applications.find(app => app.id === jobId);
+  if (!job) return;
+  
+  const details = `
+📋 Job Details
+
+Company: ${job.company || 'N/A'}
+Role: ${job.role || 'N/A'}
+Location: ${job.location || 'N/A'}
+Salary: ${job.salary || 'N/A'}
+Status: ${job.status || 'queued'}
+Match Score: ${job.matchScore || calculateJobScore(job)}%
+Priority: ${job.priority || getJobPriority(job)}
+
+${job.notes ? 'Notes: ' + job.notes : ''}
+${job.addedToQueue ? 'Added: ' + new Date(job.addedToQueue).toLocaleString() : ''}
+  `.trim();
+  
+  alert(details);
+  
+  // Open URL if available
+  if (job.url) {
+    if (confirm('Open job posting in new tab?')) {
+      window.open(job.url, '_blank');
+    }
+  }
+}
+
 function addJobManually() {
   // Open a modal to add job manually
   alert('Manual job addition will be implemented next!');
 }
 
 function addSelectedToPipeline() {
-  const selectedJobs = Array.from(document.querySelectorAll('#jobQueueRows input[type="checkbox"]:checked'))
-    .map(checkbox => checkbox.closest('div[style*="grid-template-columns"]'))
-    .map(row => {
-      // Extract job ID from the row's buttons
-      const editBtn = row.querySelector('button[onclick*="editJob"]');
-      if (editBtn) {
-        const match = editBtn.getAttribute('onclick').match(/editJob\('([^']+)'\)/);
-        return match ? match[1] : null;
-      }
-      return null;
-    })
-    .filter(id => id !== null);
+  const selectedCheckboxes = document.querySelectorAll('#jobQueueRows input[type="checkbox"]:checked');
+  const selectedJobs = Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-job-id'));
   
   if (selectedJobs.length === 0) {
     alert('Please select at least one job to add to your pipeline');
