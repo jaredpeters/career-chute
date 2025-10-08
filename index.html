@@ -5702,6 +5702,13 @@ async function initializeSpreadsheet() {
     return;
   }
   
+  // Ensure Sheets API is loaded
+  if (!gapi || !gapi.client || !gapi.client.sheets) {
+    alert('Google Sheets API not loaded yet. Please wait a moment and try again.');
+    console.error('Sheets API not ready:', { gapi: !!gapi, client: !!gapi?.client, sheets: !!gapi?.client?.sheets });
+    return;
+  }
+  
   try {
     // Check if spreadsheet already exists and is accessible
     if (state.sheets.spreadsheetId) {
@@ -6430,19 +6437,19 @@ function renderPrioritizationSettings() {
   
   container.innerHTML = `
     <div style="display: grid; gap: 16px;">
-      <div style="background: var(--panel-hover); padding: 12px; border-radius: 8px; font-size: 12px;">
-        <strong>How it works:</strong> Click role titles to cycle through grades<br>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
-          <span style="background: #6b7280; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Gray = Ungraded</span>
-          <span style="background: #16a34a; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Green = Grade A</span>
-          <span style="background: #ea580c; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Orange = Grade B</span>
-          <span style="background: #dc2626; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px;">Red = Grade C</span>
+      <div style="background: var(--panel-hover); padding: 10px; border-radius: 8px; font-size: 11px;">
+        <strong>Click roles to cycle colors:</strong>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+          <span style="background: #6b7280; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Gray = Ungraded</span>
+          <span style="background: #16a34a; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Green = Grade A</span>
+          <span style="background: #ea580c; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Orange = Grade B</span>
+          <span style="background: #dc2626; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px;">Red = Grade C</span>
         </div>
       </div>
       
       ${roles.length === 0 ? 
         '<p style="color: var(--text-muted); font-size: 13px; margin: 0;">No roles yet. Scan Gmail or add jobs manually to see role titles here.</p>' :
-        `<div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        `<div style="display: flex; flex-wrap: wrap; gap: 4px;">
           ${roles.map(role => {
             const grade = state.roleGrades[role] || 'ungraded';
             const colors = {
@@ -6459,9 +6466,9 @@ function renderPrioritizationSettings() {
                 background: ${color.bg}; 
                 color: ${color.text}; 
                 border: none; 
-                padding: 6px 12px; 
-                border-radius: 6px; 
-                font-size: 12px; 
+                padding: 3px 8px; 
+                border-radius: 4px; 
+                font-size: 10px; 
                 cursor: pointer;
                 transition: opacity 0.2s;
               "
@@ -6481,12 +6488,35 @@ function cycleRoleGrade(roleTitle) {
   const gradeOrder = ['ungraded', 'A', 'B', 'C'];
   const currentIndex = gradeOrder.indexOf(currentGrade);
   const nextIndex = (currentIndex + 1) % gradeOrder.length;
+  const newGrade = gradeOrder[nextIndex];
   
-  state.roleGrades[roleTitle] = gradeOrder[nextIndex];
+  state.roleGrades[roleTitle] = newGrade;
   saveToFirebase();
   
-  // Re-render both sections (but prioritization won't re-sort on each click)
-  renderJobQueue();
+  // Update colors in real-time without re-rendering/re-sorting
+  updateRoleColors(roleTitle, newGrade);
+}
+
+function updateRoleColors(roleTitle, grade) {
+  const gradeColors = {
+    'A': { bg: '#16a34a', text: 'white' },
+    'B': { bg: '#ea580c', text: 'white' },
+    'C': { bg: '#dc2626', text: 'white' },
+    'ungraded': { bg: '#6b7280', text: 'white' }
+  };
+  const color = gradeColors[grade];
+  
+  // Find and update all buttons with this role title (both in cluster and table)
+  const buttons = document.querySelectorAll(`button[onclick*="cycleRoleGrade"]`);
+  buttons.forEach(btn => {
+    // Check if this button is for the role we're updating
+    if (btn.textContent.trim() === roleTitle) {
+      btn.style.background = color.bg;
+      btn.style.color = color.text;
+      const gradeLabel = grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade;
+      btn.title = `Click to cycle grade: ${gradeLabel}`;
+    }
+  });
 }
 
 function syncToUserId() {
