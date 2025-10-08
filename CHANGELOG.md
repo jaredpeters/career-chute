@@ -4,6 +4,33 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.1.1] - 2025-10-08
+
+### 🔧 Bug Fixes
+- **LinkedIn Extraction** - Improved company name extraction patterns
+  - More flexible regex patterns (6 different strategies)
+  - Wider container search depth (8 levels vs 5)
+  - LinkedIn-specific patterns for quotes and multi-line text
+  - Better filtering of non-company text
+
+- **Firebase Error** - Fixed RegExp serialization error
+  - Exclude `emailParsers` from Firebase save (contains RegExp objects)
+  - No longer crashes on save with "Unsupported field value" error
+
+### 📊 Debug Improvements
+- Added detailed console logging for extraction process
+  - `📝 Container text preview` - See HTML structure being parsed
+  - `✅ Found company:` - Track successful extractions
+  - `📦 Extracted:` - See final result before validation
+  - Helps diagnose parsing issues
+
+### 🧪 Testing
+- Run `viewRejectedListings()` in console after scan
+- Check company extraction success rate
+- Report any persistent "No company name found" errors
+
+---
+
 ## [3.1.0] - 2025-10-08
 
 ### 🎯 Major Features
