@@ -1995,14 +1995,36 @@ let state = {
     glassdoor: {
       patterns: {
         subject: [
+          // Pattern 1: "Company1, Company2 in Location. Apply Now."
           /(.+?)\s+in\s+(.+?)\.\s*Apply\s+Now/i,
-          /(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i
+          // Pattern 2: "Company for Role. Apply Now."
+          /(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i,
+          // Pattern 3: "Company is hiring"
+          /(.+?)\s+is\s+hiring/i
         ],
         body: {
           company: [/company[:\s]+([^<\n]+)/i],
-          location: [/location[:\s]+([^<\n]+)/i],
+          location: [/location[:\s]+([^<\n]+)/i, /([A-Z][a-z]+,\s*[A-Z]{2})/],
           salary: [/\$[\d,]+\s*-\s*\$[\d,]+/],
           url: [/https:\/\/www\.glassdoor\.com[^\s"<]+/]
+        }
+      }
+    },
+    ziprecruiter: {
+      patterns: {
+        subject: [
+          // Pattern 1: "Jared, I think this job might be right for you!"
+          /Jared,\s+I\s+think\s+this\s+job\s+might\s+be\s+right\s+for\s+you!/i,
+          // Pattern 2: "💼 Jared, Company. has an open position"
+          /💼\s+Jared,\s+(.+?)\.\s+has\s+an\s+open\s+position/i,
+          // Pattern 3: "Did you see this job?"
+          /Did\s+you\s+see\s+this\s+job\?/i
+        ],
+        body: {
+          company: [/company[:\s]+([^<\n]+)/i, /at\s+([^<\n]+)/i],
+          location: [/location[:\s]+([^<\n]+)/i, /([A-Z][a-z]+,\s*[A-Z]{2})/],
+          salary: [/\$[\d,]+\s*-\s*\$[\d,]+/],
+          url: [/https:\/\/[^\s"<]+/]
         }
       }
     }
@@ -6358,7 +6380,7 @@ async function scanJobAlerts() {
     // Show detailed results
     const blockedEmployerCount = Object.keys(state.blockedEmployers).length;
     const blockedCityCount = Object.keys(state.blockedCities || {}).length;
-    const gradeCCount = jobs.filter(job => {
+    const gradeCCount = (state.applications || []).filter(job => {
       const roleTitle = (job.role || '').trim();
       const grade = state.roleGrades[roleTitle];
       return grade === 'C';
@@ -6674,9 +6696,26 @@ function mapEmailFields(subject, body, from) {
         company = match[1]?.trim() || '';
         role = match[2]?.trim() || '';
       } else if (pattern.source.includes('in') && pattern.source.includes('Apply')) {
-        // Format: "Company in Location. Apply Now"
-        company = match[1]?.trim() || '';
+        // Format: "Company1, Company2 in Location. Apply Now"
+        const companies = match[1]?.trim().split(',').map(c => c.trim()) || [];
+        company = companies[0] || 'Unknown';
         location = match[2]?.trim() || '';
+        role = 'Various Roles';
+      } else if (pattern.source.includes('is hiring')) {
+        // Format: "Company is hiring"
+        company = match[1]?.trim() || '';
+        role = 'Various Roles';
+      } else if (pattern.source.includes('I think this job')) {
+        // Format: "Jared, I think this job might be right for you!"
+        company = 'Unknown';
+        role = 'Various Roles';
+      } else if (pattern.source.includes('has an open position')) {
+        // Format: "💼 Jared, Company. has an open position"
+        company = match[1]?.trim() || '';
+        role = 'Various Roles';
+      } else if (pattern.source.includes('Did you see this job')) {
+        // Format: "Did you see this job?"
+        company = 'Unknown';
         role = 'Various Roles';
       }
       break; // Use first successful match
@@ -6721,6 +6760,31 @@ function mapEmailFields(subject, body, from) {
         url = match[0] || '';
         break;
       }
+    }
+  }
+  
+  // Additional body parsing for common patterns
+  if (!company || company === 'Unknown') {
+    // Try to extract company from body text
+    const companyMatch = body.match(/(?:at|@)\s+([^<\n,]+?)(?:\s+in\s+|\s*$)/i);
+    if (companyMatch) {
+      company = companyMatch[1].trim();
+    }
+  }
+  
+  if (!location || location.length < 3) {
+    // Try to extract full location from body
+    const locationMatch = body.match(/([A-Z][a-z]+\s+[A-Z][a-z]+,\s*[A-Z]{2})/);
+    if (locationMatch) {
+      location = locationMatch[1];
+    }
+  }
+  
+  if (!role || role === 'Various Roles') {
+    // Try to extract specific role from body
+    const roleMatch = body.match(/([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive))/i);
+    if (roleMatch) {
+      role = roleMatch[1].trim();
     }
   }
   
