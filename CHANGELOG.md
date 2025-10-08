@@ -4,6 +4,20 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.3.3] - 2025-10-08
+
+### 🛠️ CRITICAL FIXES: CSV Parsing & UI Issues
+- **CSV Parsing Fixed**: Now properly handles quoted fields in CSV headers
+- **Success Message**: Brief "Success!" message, auto-closes modal
+- **User ID Visibility**: Fixed dark background in light mode
+- **Mobile CSV**: Now works with Claude's mobile CSV output
+
+### 🔧 Technical Fixes
+- **Header Parsing**: Uses proper CSV parsing for headers (not simple split)
+- **Modal UX**: Auto-close after successful import, no scrolling needed
+- **Theme Support**: User ID section now respects light/dark mode
+- **Data Safety**: All fixes preserve existing data integrity
+
 ## [3.3.2] - 2025-10-08
 
 ### 🚀 ADDED: CSV Import in Add Application Modal

@@ -1514,9 +1514,9 @@ progress::-webkit-progress-value {
   
   <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line);">
     <h3 style="margin-bottom: 16px;">Account</h3>
-    <div style="background: #0f1114; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+    <div style="background: var(--panel); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
       <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">User ID</div>
-      <div style="font-size: 14px; font-family: monospace;" id="userId">Loading...</div>
+      <div style="font-size: 14px; font-family: monospace; color: var(--text);" id="userId">Loading...</div>
     </div>
     <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">
       Your data syncs automatically across all devices using this ID.
@@ -2054,7 +2054,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.3.2'; // Add CSV import to Add Application modal
+const APP_VERSION = '3.3.3'; // Fix CSV parsing, success message, and User ID visibility
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -6618,8 +6618,8 @@ function importCSVData() {
       return;
     }
     
-    // Parse header
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    // Parse header using proper CSV parsing
+    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'benefits', 'source', 'notes'];
     
     // Check if headers match
@@ -6738,8 +6738,8 @@ function importFromCSVText() {
       return;
     }
     
-    // Parse header
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    // Parse header using proper CSV parsing
+    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'benefits', 'source', 'notes'];
     
     // Check if headers match
@@ -6808,12 +6808,8 @@ function importFromCSVText() {
     closeModal('addAppModal');
     clearCSVText();
     
-    // Show results
-    let message = `✅ Import Complete!\n\n📥 Imported: ${imported} jobs\n`;
-    if (duplicates > 0) message += `🔄 Duplicates: ${duplicates} jobs\n`;
-    if (errors > 0) message += `❌ Errors: ${errors} rows\n`;
-    
-    alert(message);
+    // Show brief success message
+    alert(`✅ Success! Imported ${imported} jobs${duplicates > 0 ? ` (${duplicates} duplicates skipped)` : ''}`);
     
   } catch (error) {
     console.error('CSV import error:', error);
