@@ -1985,7 +1985,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.2.2'; // Auto-migrate existing Client ID to Google section
+const APP_VERSION = '3.2.3'; // Fix Google Sheets API loading
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -4794,6 +4794,15 @@ async function initializeApp() {
     console.log('✅ Migrated Gmail Client ID to Google section');
   }
   
+  // Initialize Google APIs for Sheets functionality
+  if (typeof gapi !== 'undefined' && !gapiInited) {
+    initGoogleAPI().then(() => {
+      console.log('✅ Google APIs loaded for Sheets functionality');
+    }).catch(error => {
+      console.warn('Google API initialization failed:', error);
+    });
+  }
+  
   // Show loading state
   updateSyncStatus('syncing', 'Starting...');
   
@@ -6221,9 +6230,26 @@ async function initializeSpreadsheet() {
   
   // Ensure Sheets API is loaded
   if (!gapi || !gapi.client || !gapi.client.sheets) {
-    alert('Google Sheets API not loaded yet. Please wait a moment and try again.');
-    console.error('Sheets API not ready:', { gapi: !!gapi, client: !!gapi?.client, sheets: !!gapi?.client?.sheets });
-    return;
+    console.log('Google Sheets API not ready, attempting to load...');
+    
+    // Try to initialize Google APIs if not already done
+    if (!gapiInited) {
+      try {
+        await initGoogleAPI();
+        console.log('✅ Google APIs loaded successfully');
+      } catch (error) {
+        console.error('Failed to load Google APIs:', error);
+        alert('Failed to load Google APIs. Please refresh the page and try again.');
+        return;
+      }
+    }
+    
+    // Check again after initialization
+    if (!gapi || !gapi.client || !gapi.client.sheets) {
+      alert('Google Sheets API still not loaded. Please refresh the page and try again.');
+      console.error('Sheets API not ready after initialization:', { gapi: !!gapi, client: !!gapi?.client, sheets: !!gapi?.client?.sheets });
+      return;
+    }
   }
   
   try {

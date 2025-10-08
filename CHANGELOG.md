@@ -4,6 +4,14 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.2.3] - 2025-10-08
+
+### 🛠️ FIXED
+- **Google Sheets API Loading**: APIs now load on app startup, not just Gmail connection
+- **Better Error Handling**: Retry logic for API initialization
+- **Sheets Functionality**: "Create Spreadsheet" now works reliably
+- **API Initialization**: Automatic loading of Google APIs for Sheets
+
 ## [3.2.2] - 2025-10-08
 
 ### 🔄 MIGRATION
