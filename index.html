@@ -1616,7 +1616,7 @@ progress::-webkit-progress-value {
         <div style="background: var(--panel); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
           <h4>Claude Prompt:</h4>
           <textarea id="claudePrompt" readonly style="width: 100%; height: 120px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; resize: vertical;">Extract job data from the following text and output as CSV with these exact columns:
-company,role,location,salary,url,source,notes
+company,role,location,salary,url,benefits,source,notes
 
 Rules:
 - company: Company name only (no "at" or extra text)
@@ -1624,6 +1624,7 @@ Rules:
 - location: City, State format (or "Remote" if remote)
 - salary: Salary range if mentioned (e.g., "$80k-120k" or "Not specified")
 - url: Job posting URL if available (or "Not provided")
+- benefits: Key benefits/compensation details (e.g., "PTO, 401k, stock options")
 - source: Where you found it (e.g., "LinkedIn", "Indeed", "Email")
 - notes: Any additional relevant info
 
@@ -2038,7 +2039,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.3.0'; // Add CSV import feature for Claude chat workflow
+const APP_VERSION = '3.3.1'; // Add benefits column and optimize display layout
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -5908,13 +5909,14 @@ function renderJobQueue() {
     return;
   }
   
-  // Create table header (added Source column)
+  // Create table header (optimized for benefits column)
   const tableHTML = `
-    <div style="display: grid; grid-template-columns: 30px 2.5fr 80px 100px 100px 70px 100px; gap: 8px; padding: 10px 12px; background: var(--glass-bg); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 13px;">
+    <div style="display: grid; grid-template-columns: 30px 2fr 60px 80px 120px 100px 70px 80px; gap: 6px; padding: 10px 12px; background: var(--glass-bg); border-bottom: 1px solid var(--line); font-weight: 600; font-size: 12px;">
       <div>✓</div>
       <div>Company & Role</div>
       <div style="text-align: center;">Source</div>
       <div style="text-align: center;">Salary</div>
+      <div style="text-align: center;">Benefits</div>
       <div style="text-align: center;">Location</div>
       <div style="text-align: center;">Status</div>
       <div style="text-align: center;">Actions</div>
@@ -5979,7 +5981,7 @@ function renderJobRow(job) {
   const overallConfidence = hasMetadata ? job._meta.overallConfidence : 'none';
   
   return `
-    <div style="display: grid; grid-template-columns: 30px 2.5fr 80px 100px 100px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
+    <div style="display: grid; grid-template-columns: 30px 2fr 60px 80px 120px 100px 70px 80px; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 12px;">
       <div>
         <input type="checkbox" onchange="updateSelectedCount()" data-job-id="${job.id}" style="width: 14px; height: 14px;">
       </div>
@@ -6043,9 +6045,12 @@ function renderJobRow(job) {
         ${source}
         ${hasMetadata ? `<div style="margin-top: 2px; font-size: 9px;">${getConfidenceIndicator(overallConfidence, 'overall')}</div>` : ''}
       </div>
-      <div style="text-align: center; color: var(--muted); font-size: 12px;">
+      <div style="text-align: center; color: var(--muted); font-size: 11px;">
         ${job.salary || 'N/A'}
         ${hasMetadata && job.salary ? getConfidenceIndicator(salaryConfidence, 'salary') : ''}
+      </div>
+      <div style="text-align: center; color: var(--muted); font-size: 10px; max-height: 40px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2;" title="${job.benefits || 'No benefits listed'}">
+        ${job.benefits ? (job.benefits.length > 50 ? job.benefits.substring(0, 47) + '...' : job.benefits) : 'N/A'}
       </div>
             <div style="text-align: center;">
               ${job.location ? (() => {
@@ -6348,7 +6353,7 @@ async function initializeSpreadsheet() {
     // Add header row with ID column first
     await gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId,
-      range: 'Job Queue!A1:N1',
+      range: 'Job Queue!A1:O1',
       valueInputOption: 'RAW',
       resource: {
         values: [[
@@ -6357,6 +6362,7 @@ async function initializeSpreadsheet() {
           'Role',
           'Source',
           'Salary',
+          'Benefits',
           'Location',
           'Status',
           'Added to Queue',
@@ -6403,7 +6409,7 @@ async function syncToGoogleSheets() {
     // Read existing sheet data to find rows by ID
     const existingData = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: state.sheets.spreadsheetId,
-      range: 'Job Queue!A2:N1000' // Read up to 1000 rows
+      range: 'Job Queue!A2:O1000' // Read up to 1000 rows
     });
     
     const existingRows = existingData.result.values || [];
@@ -6429,6 +6435,7 @@ async function syncToGoogleSheets() {
         app.role || '',
         source,
         app.salary || '',
+        app.benefits || '',
         app.location || '',
         app.status || '',
         app.addedToQueue ? formatDateTime(app.addedToQueue, true) : '',
@@ -6443,7 +6450,7 @@ async function syncToGoogleSheets() {
         const rowNumber = existingIds.get(app.id);
         await gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId: state.sheets.spreadsheetId,
-          range: `Job Queue!A${rowNumber}:N${rowNumber}`,
+          range: `Job Queue!A${rowNumber}:O${rowNumber}`,
           valueInputOption: 'RAW',
           resource: { values: [rowData] }
         });
@@ -6452,7 +6459,7 @@ async function syncToGoogleSheets() {
         // Append new row
         await gapi.client.sheets.spreadsheets.values.append({
           spreadsheetId: state.sheets.spreadsheetId,
-          range: 'Job Queue!A2:M2',
+          range: 'Job Queue!A2:O2',
           valueInputOption: 'RAW',
           insertDataOption: 'INSERT_ROWS',
           resource: { values: [rowData] }
@@ -6598,7 +6605,7 @@ function importCSVData() {
     
     // Parse header
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'source', 'notes'];
+    const expectedHeaders = ['company', 'role', 'location', 'salary', 'url', 'benefits', 'source', 'notes'];
     
     // Check if headers match
     const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
@@ -6632,6 +6639,7 @@ function importCSVData() {
           location: values[headers.indexOf('location')] || '',
           salary: values[headers.indexOf('salary')] || '',
           url: values[headers.indexOf('url')] || '',
+          benefits: values[headers.indexOf('benefits')] || '',
           source: values[headers.indexOf('source')] || 'CSV Import',
           notes: values[headers.indexOf('notes')] || '',
           status: 'applied',

@@ -4,6 +4,21 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.3.1] - 2025-10-08
+
+### 🔧 ENHANCED: Benefits Column & Optimized Display
+- **Benefits Column**: Added to CSV import, job display, and Google Sheets sync
+- **Optimized Layout**: Better column widths for one-line display
+- **Truncated Benefits**: Long benefits text truncated with tooltip on hover
+- **Updated Claude Prompt**: Now includes benefits extraction
+- **Google Sheets Sync**: Benefits column included in spreadsheet sync
+
+### 📊 Display Improvements
+- **Compact Grid**: 8 columns optimized for screen space
+- **Smart Truncation**: Benefits truncated to 50 chars with "..." 
+- **Hover Tooltips**: Full benefits text on hover
+- **Better Spacing**: Reduced gaps and font sizes for more content
+
 ## [3.3.0] - 2025-10-08
 
 ### 🚀 MAJOR FEATURE: CSV Import for Claude Chat Workflow
