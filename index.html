@@ -1280,6 +1280,35 @@ progress::-webkit-progress-value {
     </button>
   </div>
   
+  <!-- Bulk Selection Dropdown -->
+  <div style="margin: 12px 0; display: flex; align-items: center; gap: 8px;">
+    <select id="bulkSelectDropdown" onchange="handleBulkSelection(this.value)" style="
+      background: var(--panel); 
+      border: 1px solid var(--line); 
+      border-radius: 6px; 
+      padding: 6px 12px; 
+      color: var(--text); 
+      font-size: 13px;
+      cursor: pointer;
+    ">
+      <option value="">Select by grade...</option>
+      <option value="all">✓ All Jobs</option>
+      <option value="A">🟢 Grade A (Green)</option>
+      <option value="B">🟠 Grade B (Orange)</option>
+      <option value="C">🔴 Grade C (Red)</option>
+      <option value="ungraded">⚪ Ungraded (Gray)</option>
+    </select>
+    <button onclick="clearAllSelections()" style="
+      background: var(--panel); 
+      border: 1px solid var(--line); 
+      border-radius: 6px; 
+      padding: 6px 12px; 
+      color: var(--text); 
+      font-size: 13px;
+      cursor: pointer;
+    ">Clear All</button>
+  </div>
+  
   <!-- Job Queue Table -->
   <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 120px;">
     <div id="jobQueueTable">
@@ -4798,7 +4827,7 @@ function addTaskToToday() {
     id: generateId(),
     type: type,
     completed: false,
-    estimatedTime: type === 'tailoring' ? 40 : type === 'application' ? 20 : type === 'networking' ? 15 : 60,
+    estimatedTime: type === 'tailoring' ? 20 : type === 'application' ? 10 : type === 'networking' ? 15 : 60,
     notes: ''
   };
   
@@ -4827,7 +4856,7 @@ function addTaskToToday() {
       state.applications.push(app);
       task.refId = app.id;
       // Also auto-create tailoring task for today
-      const tailoringTask = { id: generateId(), type: 'tailoring', refId: app.id, completed: false, estimatedTime: 40, notes: '' };
+      const tailoringTask = { id: generateId(), type: 'tailoring', refId: app.id, completed: false, estimatedTime: 20, notes: '' };
       state.dailyTasks[today].push(tailoringTask);
     } else if (type === 'networking') {
       const name = document.getElementById('quickContactName').value.trim();
@@ -4872,7 +4901,7 @@ function addTaskToToday() {
     task.refId = refId;
     // If adding application task, also create paired tailoring task
     if (type === 'application') {
-      const tailoringTask = { id: generateId(), type: 'tailoring', refId: refId, completed: false, estimatedTime: 40, notes: '' };
+      const tailoringTask = { id: generateId(), type: 'tailoring', refId: refId, completed: false, estimatedTime: 20, notes: '' };
       state.dailyTasks[today].push(tailoringTask);
     }
   } else {
@@ -5582,7 +5611,7 @@ function renderJobRow(job) {
         <input type="checkbox" onchange="updateSelectedCount()" data-job-id="${job.id}" style="width: 14px; height: 14px;">
       </div>
       <div style="min-width: 0;">
-        <div style="font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px;">
+        <div style="font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
           <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</span>
           <button 
             onclick="blockEmployer('${job.company.replace(/'/g, "\\'")}')" 
@@ -5590,15 +5619,18 @@ function renderJobRow(job) {
               background: #6b7280; 
               color: white; 
               border: none; 
-              width: 16px; 
-              height: 16px; 
+              width: 14px; 
+              height: 14px; 
               border-radius: 50%; 
-              font-size: 10px; 
+              font-size: 8px; 
               cursor: pointer;
               display: flex;
               align-items: center;
               justify-content: center;
               flex-shrink: 0;
+              padding: 0;
+              margin: 0;
+              line-height: 1;
             "
             title="Block this employer (never see jobs from them again)"
           >×</button>
@@ -6524,6 +6556,49 @@ function blockEmployer(companyName) {
   }
   
   alert(`Blocked "${companyName}"!\n\nRemoved ${removedCount} existing job(s) from this employer.\n\nFuture Gmail scans will skip jobs from this company.`);
+}
+
+function handleBulkSelection(grade) {
+  const checkboxes = document.querySelectorAll('#jobQueueRows input[type="checkbox"]');
+  
+  if (grade === 'all') {
+    // Select all jobs
+    checkboxes.forEach(cb => cb.checked = true);
+  } else if (grade === 'ungraded') {
+    // Select only ungraded jobs
+    checkboxes.forEach(cb => {
+      const jobId = cb.getAttribute('data-job-id');
+      const job = state.applications.find(app => app.id === jobId);
+      if (job) {
+        const roleTitle = (job.role || '').trim();
+        const grade = state.roleGrades[roleTitle] || 'ungraded';
+        cb.checked = grade === 'ungraded';
+      }
+    });
+  } else if (['A', 'B', 'C'].includes(grade)) {
+    // Select jobs by specific grade
+    checkboxes.forEach(cb => {
+      const jobId = cb.getAttribute('data-job-id');
+      const job = state.applications.find(app => app.id === jobId);
+      if (job) {
+        const roleTitle = (job.role || '').trim();
+        const jobGrade = state.roleGrades[roleTitle] || 'ungraded';
+        cb.checked = jobGrade === grade;
+      }
+    });
+  }
+  
+  updateSelectedCount();
+  
+  // Reset dropdown
+  const dropdown = document.getElementById('bulkSelectDropdown');
+  if (dropdown) dropdown.value = '';
+}
+
+function clearAllSelections() {
+  const checkboxes = document.querySelectorAll('#jobQueueRows input[type="checkbox"]');
+  checkboxes.forEach(cb => cb.checked = false);
+  updateSelectedCount();
 }
 
 function updateSelectedCount() {
