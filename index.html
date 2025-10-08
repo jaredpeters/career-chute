@@ -1951,6 +1951,7 @@ let state = {
   blockedEmployers: {
     // List of company names that should be blocked from future imports
     // Example: 'Spam Company': true, 'Bad Employer': true
+    // This persists even when applications are cleared
   },
   cityGrades: {
     // Cities mapped to grades: 'A', 'B', 'C', or 'ungraded' (gray)
@@ -5613,11 +5614,10 @@ function renderJobQueue() {
   const container = document.getElementById('jobQueueTable');
   if (!container) return;
   
-  // Get all applications and sort by priority
+  // Get all applications and sort by score
   const jobs = (state.applications || []).map(app => ({
     ...app,
-    matchScore: calculateJobScore(app),
-    priority: getJobPriority(app)
+    matchScore: calculateJobScore(app)
   })).sort((a, b) => b.matchScore - a.matchScore);
   
   console.log('Rendering job queue with', jobs.length, 'jobs');
@@ -6355,11 +6355,19 @@ async function scanJobAlerts() {
       await syncToGoogleSheets();
     }
     
-    // Show results
+    // Show detailed results
+    const blockedEmployerCount = Object.keys(state.blockedEmployers).length;
+    const blockedCityCount = Object.keys(state.blockedCities || {}).length;
+    const gradeCCount = jobs.filter(job => {
+      const roleTitle = (job.role || '').trim();
+      const grade = state.roleGrades[roleTitle];
+      return grade === 'C';
+    }).length;
+    
     let resultsMessage = `✅ Scan Complete!\n\n📥 Added: ${addedCount} new jobs\n🔄 Duplicates: ${duplicateCount}\n📧 Emails processed: ${messages.length}`;
     
     if (skippedCount > 0) {
-      resultsMessage += `\n⚠️ Skipped: ${skippedCount} jobs\n(Red grades + unparseable emails)`;
+      resultsMessage += `\n⚠️ Skipped: ${skippedCount} jobs\n\n📊 Breakdown:\n• Red grades: ${gradeCCount}\n• Blocked employers: ${blockedEmployerCount}\n• Blocked cities: ${blockedCityCount}\n• Unparseable: ${skippedCount - gradeCCount}`;
     }
     
     alert(resultsMessage);
@@ -7147,11 +7155,20 @@ function renderPrioritizationSettings() {
   const container = document.getElementById('prioritizationSettings');
   if (!container) return; // Exit if container doesn't exist
   
-  // Get unique role titles from all applications
+  // Get unique role titles from all applications AND previously graded roles
   const roleSet = new Set();
+  
+  // Add roles from current applications
   state.applications.forEach(app => {
     if (app.role) {
       roleSet.add(app.role.trim());
+    }
+  });
+  
+  // Add roles that have been previously graded (even if not in current applications)
+  Object.keys(state.roleGrades).forEach(role => {
+    if (state.roleGrades[role] !== 'ungraded') {
+      roleSet.add(role);
     }
   });
   
@@ -7291,12 +7308,21 @@ function renderCityGradingSettings() {
   const container = document.getElementById('cityGradingSettings');
   if (!container) return;
   
-  // Get unique cities from all applications
+  // Get unique cities from all applications AND previously graded cities
   const citySet = new Set();
+  
+  // Add cities from current applications
   state.applications.forEach(app => {
     if (app.location) {
       // Extract city from location (handle "Los Angeles, CA" format)
       const city = app.location.split(',')[0].trim();
+      citySet.add(city);
+    }
+  });
+  
+  // Add cities that have been previously graded (even if not in current applications)
+  Object.keys(state.cityGrades).forEach(city => {
+    if (state.cityGrades[city] !== 'ungraded') {
       citySet.add(city);
     }
   });
