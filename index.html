@@ -1434,6 +1434,18 @@ progress::-webkit-progress-value {
     <div class="subtitle">Customize your goals and preferences</div>
   </div>
   
+  <!-- Version Info -->
+  <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); font-weight: 600;">v<span id="app-version"></span></span>
+      <span style="font-size: 12px; color: var(--muted);">•</span>
+      <span style="font-size: 12px; color: var(--muted);">Build: <span id="app-build-date"></span></span>
+    </div>
+    <div style="font-size: 11px; color: var(--muted);">
+      <span id="version-status">Loading...</span>
+    </div>
+  </div>
+  
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px;">
     <div class="glass-card" style="padding: 24px;">
       <h3 style="margin-bottom: 16px; color: var(--accent);">Weekly Targets</h3>
@@ -1993,9 +2005,13 @@ let userId = SHARED_USER_ID;
 // Always use the shared User ID
 localStorage.setItem('career_chute_user_id', userId);
 
+// App Version
+const APP_VERSION = '3.1.0'; // Updated: Parser improvements + validation system
+const APP_BUILD_DATE = '2025-10-08';
+
 // State
 let state = {
-  version: '3.0.0',
+  version: APP_VERSION,
   weekStart: null,
   targets: { apps: 15, networking: 10, events: 1 },
   applications: [],
@@ -2420,11 +2436,14 @@ function setupRealtimeSync() {
     updateSyncStatus('error', 'Sync Setup Error');
   }
   
-  // Set up periodic Gmail token expiry check
+  // Set up periodic Gmail token expiry check and UI update
   if (state.gmail && state.gmail.connected) {
     setInterval(() => {
       checkTokenExpiry();
+      updateGmailUI(); // Update UI to show current token time remaining
     }, 60000); // Check every minute
+    
+    console.log('Gmail token monitoring started - will check every minute');
   }
 }
 
@@ -4756,8 +4775,24 @@ function isOnTrack() {
 }
 
 // App initialization
+// Display app version info
+function displayVersionInfo() {
+  const versionEl = document.getElementById('app-version');
+  const buildDateEl = document.getElementById('app-build-date');
+  const statusEl = document.getElementById('version-status');
+  
+  if (versionEl) versionEl.textContent = APP_VERSION;
+  if (buildDateEl) buildDateEl.textContent = APP_BUILD_DATE;
+  if (statusEl) statusEl.textContent = '✓ Up to date';
+  
+  console.log(`🚀 Career Chute v${APP_VERSION} (${APP_BUILD_DATE})`);
+}
+
 async function initializeApp() {
   console.log('Initializing Career Chute...');
+  
+  // Display version info
+  displayVersionInfo();
   
   // Show loading state
   updateSyncStatus('syncing', 'Starting...');
@@ -5660,7 +5695,7 @@ async function refreshGmailToken() {
     throw new Error('No token to refresh');
   }
   
-  // Check if token is actually expired
+  // Check if token is actually expired (allow small buffer for in-flight requests)
   if (Date.now() < state.gmail.tokenExpiry - 60000) { // 1 minute buffer
     console.log('Token still valid, no refresh needed');
     return;
@@ -5671,33 +5706,42 @@ async function refreshGmailToken() {
   // Use Google Identity Services to refresh the token
   if (typeof google !== 'undefined' && google.accounts && tokenClient) {
     return new Promise((resolve, reject) => {
-      tokenClient.requestAccessToken({ prompt: '' }).then((response) => {
+      // Request new token silently (no popup if user still logged in)
+      tokenClient.callback = (response) => {
         if (response.error) {
+          console.error('Token refresh error:', response.error);
           reject(new Error(response.error));
           return;
         }
         
-        state.gmail.accessToken = response.access_token;
-        state.gmail.tokenExpiry = Date.now() + (response.expires_in * 1000);
-        
-        // Set the token for API calls
-        if (gapi && gapi.client) {
-          gapi.client.setToken({
-            access_token: response.access_token
-          });
+        if (response.access_token) {
+          state.gmail.accessToken = response.access_token;
+          state.gmail.tokenExpiry = Date.now() + (response.expires_in * 1000);
+          
+          // Set the token for API calls
+          if (gapi && gapi.client) {
+            gapi.client.setToken({
+              access_token: response.access_token
+            });
+          }
+          
+          saveToFirebase();
+          console.log('Gmail token refreshed successfully. New expiry:', new Date(state.gmail.tokenExpiry).toLocaleTimeString());
+          resolve();
+        } else {
+          reject(new Error('No access token in response'));
         }
-        
-        saveToFirebase();
-        console.log('Gmail token refreshed successfully');
-        resolve();
-      }).catch(reject);
+      };
+      
+      // Request token without showing popup (prompt: 'none')
+      tokenClient.requestAccessToken({ prompt: '' });
     });
   } else {
     throw new Error('Google Identity Services not available for token refresh');
   }
 }
 
-function checkTokenExpiry() {
+async function checkTokenExpiry() {
   if (!state.gmail.connected || !state.gmail.tokenExpiry) {
     return;
   }
@@ -5707,20 +5751,14 @@ function checkTokenExpiry() {
   
   // Refresh token if it expires in less than 5 minutes
   if (timeUntilExpiry < 5 * 60 * 1000) {
-    if (typeof gapi !== 'undefined' && gapi.auth2) {
-      const authInstance = gapi.auth2.getAuthInstance();
-      if (authInstance) {
-        const googleUser = authInstance.currentUser.get();
-        googleUser.reloadAuthResponse().then(authResponse => {
-          state.gmail.accessToken = authResponse.access_token;
-          state.gmail.tokenExpiry = Date.now() + (authResponse.expires_in * 1000);
-          saveToFirebase();
-          console.log('Gmail token refreshed');
-        }).catch(error => {
-          console.error('Token refresh failed:', error);
-          disconnectGmail();
-        });
-      }
+    console.log(`Token expires in ${Math.round(timeUntilExpiry / 60000)} minutes, refreshing...`);
+    try {
+      await refreshGmailToken();
+      console.log('Automatic token refresh successful');
+    } catch (error) {
+      console.error('Automatic token refresh failed:', error);
+      // Don't disconnect immediately, let user continue until actual API call fails
+      console.warn('Will attempt refresh on next API call');
     }
   }
 }
@@ -5732,7 +5770,22 @@ function updateGmailUI() {
   const scanBtn = document.getElementById('scanEmailsBtn');
   
   if (state.gmail.connected) {
-    statusText.textContent = `Connected as ${state.gmail.userEmail}`;
+    let statusMessage = `Connected as ${state.gmail.userEmail}`;
+    
+    // Show token expiry time for debugging
+    if (state.gmail.tokenExpiry) {
+      const timeUntilExpiry = state.gmail.tokenExpiry - Date.now();
+      const minutesLeft = Math.round(timeUntilExpiry / 60000);
+      
+      if (minutesLeft > 0) {
+        statusMessage += ` (token valid for ${minutesLeft}m)`;
+      } else {
+        statusMessage += ` (token expired!)`;
+        statusText.style.color = '#ea580c'; // Orange warning
+      }
+    }
+    
+    statusText.textContent = statusMessage;
     statusText.style.color = 'var(--ok)';
     
     if (connectBtn) connectBtn.style.display = 'none';
@@ -5812,6 +5865,34 @@ function renderJobQueue() {
   container.innerHTML = tableHTML;
 }
 
+/**
+ * Generate confidence indicator badge
+ */
+function getConfidenceIndicator(confidence, fieldName) {
+  const colors = {
+    'high': { emoji: '🟢', bg: '#dcfce7', text: '#166534', tooltip: 'High confidence - verified from structured data' },
+    'medium': { emoji: '🟡', bg: '#fef3c7', text: '#92400e', tooltip: 'Medium confidence - extracted from patterns' },
+    'low': { emoji: '🔴', bg: '#fee2e2', text: '#991b1b', tooltip: 'Low confidence - needs review' },
+    'none': { emoji: '⚪', bg: '#f3f4f6', text: '#6b7280', tooltip: 'Not found' }
+  };
+  
+  const color = colors[confidence] || colors.none;
+  
+  return `<span 
+    style="
+      display: inline-block; 
+      font-size: 10px; 
+      padding: 2px 4px; 
+      border-radius: 3px; 
+      background: ${color.bg}; 
+      color: ${color.text};
+      margin-left: 4px;
+      cursor: help;
+    " 
+    title="${color.tooltip}"
+  >${color.emoji}</span>`;
+}
+
 function renderJobRow(job) {
   const statusColor = getStatusColor(job.status);
   const roleTitle = (job.role || '').trim();
@@ -5827,6 +5908,14 @@ function renderJobRow(job) {
   // Determine source from job data
   const source = job.source || (job.notes ? job.notes.replace('Found via ', '').replace(' job alert', '') : 'Unknown');
   
+  // Get confidence indicators if available
+  const hasMetadata = job._meta && job._meta.overallConfidence;
+  const companyConfidence = hasMetadata ? job._meta.company.confidence : 'none';
+  const roleConfidence = hasMetadata ? job._meta.role.confidence : 'none';
+  const locationConfidence = hasMetadata ? job._meta.location.confidence : 'none';
+  const salaryConfidence = hasMetadata ? job._meta.salary.confidence : 'none';
+  const overallConfidence = hasMetadata ? job._meta.overallConfidence : 'none';
+  
   return `
     <div style="display: grid; grid-template-columns: 30px 2.5fr 80px 100px 100px 70px 100px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px;">
       <div>
@@ -5834,7 +5923,10 @@ function renderJobRow(job) {
       </div>
       <div style="min-width: 0;">
         <div style="font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
-          <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</span>
+          <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${job.company}
+            ${hasMetadata ? getConfidenceIndicator(companyConfidence, 'company') : ''}
+          </span>
           <button 
             onclick="blockEmployer('${job.company.replace(/'/g, "\\'")}')" 
             style="
@@ -5859,34 +5951,39 @@ function renderJobRow(job) {
             title="Block this employer (never see jobs from them again)"
           >×</button>
         </div>
-        <button 
-          onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
-          style="
-            background: ${roleColor.bg}; 
-            color: ${roleColor.text}; 
-            border: none; 
-            padding: 3px 8px; 
-            border-radius: 4px; 
-            font-size: 10px; 
-            cursor: pointer;
-            transition: opacity 0.2s;
-            white-space: normal;
-            word-wrap: break-word;
-            height: auto;
-            min-height: 20px;
-            display: inline-block;
-            text-align: center;
-          "
-          onmouseover="this.style.opacity='0.8'"
-          onmouseout="this.style.opacity='1'"
-          title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
-        >${job.role}</button>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <button 
+            onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
+            style="
+              background: ${roleColor.bg}; 
+              color: ${roleColor.text}; 
+              border: none; 
+              padding: 3px 8px; 
+              border-radius: 4px; 
+              font-size: 10px; 
+              cursor: pointer;
+              transition: opacity 0.2s;
+              white-space: normal;
+              word-wrap: break-word;
+              height: auto;
+              min-height: 20px;
+              display: inline-block;
+              text-align: center;
+            "
+            onmouseover="this.style.opacity='0.8'"
+            onmouseout="this.style.opacity='1'"
+            title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+          >${job.role}</button>
+          ${hasMetadata ? getConfidenceIndicator(roleConfidence, 'role') : ''}
+        </div>
       </div>
       <div style="text-align: center; color: var(--muted); font-size: 11px;">
         ${source}
+        ${hasMetadata ? `<div style="margin-top: 2px; font-size: 9px;">${getConfidenceIndicator(overallConfidence, 'overall')}</div>` : ''}
       </div>
       <div style="text-align: center; color: var(--muted); font-size: 12px;">
         ${job.salary || 'N/A'}
+        ${hasMetadata && job.salary ? getConfidenceIndicator(salaryConfidence, 'salary') : ''}
       </div>
             <div style="text-align: center;">
               ${job.location ? (() => {
@@ -5924,6 +6021,7 @@ function renderJobRow(job) {
                     onmouseout="this.style.opacity='1'"
                     title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
                   >${city}</button>
+                  ${hasMetadata ? getConfidenceIndicator(locationConfidence, 'location') : ''}
                   <button 
                     onclick="blockCity('${city.replace(/'/g, "\\'")}')" 
                     style="
@@ -6421,6 +6519,10 @@ async function scanJobAlerts() {
     let addedCount = 0;
     let duplicateCount = 0;
     let skippedCount = 0;
+    let rejectedCount = 0;
+    
+    // Reset rejected listings tracker
+    window._rejectedListings = [];
     
     // Process each message
     for (const message of messages.slice(0, 30)) { // Increased to 30
@@ -6430,9 +6532,45 @@ async function scanJobAlerts() {
         format: 'full'
       });
       
-      const jobData = parseJobEmail(fullMessage.result);
+      // Try to extract multiple listings from HTML
+      const headers = fullMessage.result.payload.headers;
+      const from = headers.find(h => h.name === 'From')?.value || '';
       
-      if (jobData) {
+      let htmlBody = '';
+      if (fullMessage.result.payload.parts) {
+        const htmlPart = fullMessage.result.payload.parts.find(part => part.mimeType === 'text/html');
+        if (htmlPart && htmlPart.body.data) {
+          htmlBody = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        }
+      }
+      
+      let jobListings = [];
+      if (htmlBody) {
+        jobListings = extractJobListingsFromHTML(htmlBody, headers.find(h => h.name === 'Subject')?.value || '', from);
+        
+        // Validate each listing
+        jobListings = jobListings.filter(listing => {
+          const validation = isValidListing(listing, htmlBody);
+          if (!validation.isValid) {
+            rejectedCount++;
+            return false;
+          }
+          return true;
+        });
+      }
+      
+      // If HTML extraction didn't work, fall back to standard parsing
+      if (jobListings.length === 0) {
+        const jobData = parseJobEmail(fullMessage.result);
+        if (jobData) {
+          jobListings = [jobData];
+        } else {
+          rejectedCount++; // Counted as rejected if returned null
+        }
+      }
+      
+      // Process all listings found in this email
+      for (const jobData of jobListings) {
         console.log('Parsed job:', jobData.company, '-', jobData.role);
         
         // Check for duplicates
@@ -6501,20 +6639,19 @@ async function scanJobAlerts() {
         } else {
           duplicateCount++;
         }
-      } else {
-        skippedCount++;
-        console.log('Could not parse email:', message.id);
-      }
+      } // End of jobListings loop
       
       // Small delay to avoid rate limits
       await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    } // End of messages loop
     
     // Save and update UI
     state.gmail.lastScanTime = new Date().toISOString();
     state.gmail.lastScanResults = {
       added: addedCount,
       duplicates: duplicateCount,
+      rejected: rejectedCount,
+      skipped: skippedCount,
       emailsProcessed: messages.length
     };
     
@@ -6557,8 +6694,16 @@ async function scanJobAlerts() {
     
     let resultsMessage = `✅ Scan Complete!\n\n📥 Added: ${addedCount} new jobs\n🔄 Duplicates: ${duplicateCount}\n📧 Emails processed: ${messages.length}`;
     
+    if (rejectedCount > 0) {
+      resultsMessage += `\n❌ Rejected: ${rejectedCount} (invalid listings)`;
+    }
+    
     if (skippedCount > 0) {
-      resultsMessage += `\n⚠️ Skipped: ${skippedCount} jobs\n\n📊 Breakdown:\n• Red grades: ${gradeCCount}\n• Blocked employers: ${blockedEmployerCount}\n• Blocked cities: ${blockedCityCount}\n• Unparseable: ${skippedCount - gradeCCount}`;
+      resultsMessage += `\n⚠️  Skipped: ${skippedCount} jobs\n\n📊 Breakdown:\n• Blocked employers: ${blockedEmployerCount}\n• Blocked cities: ${blockedCityCount}\n• Red grades: ${gradeCCount}`;
+    }
+    
+    if (rejectedCount > 0) {
+      resultsMessage += `\n\n💡 Tip: Open console to view rejected listings\n   Run: viewRejectedListings()`;
     }
     
     alert(resultsMessage);
@@ -6578,47 +6723,662 @@ async function scanJobAlerts() {
   }
 }
 
+/**
+ * View rejected listings (for debugging)
+ * Run in console: viewRejectedListings()
+ */
+function viewRejectedListings() {
+  if (!window._rejectedListings || window._rejectedListings.length === 0) {
+    console.log('✅ No rejected listings in last scan!');
+    return;
+  }
+  
+  console.log(`\n❌ REJECTED LISTINGS (${window._rejectedListings.length})\n${'='.repeat(80)}\n`);
+  
+  window._rejectedListings.forEach((rejected, index) => {
+    console.log(`\n[${index + 1}] From: ${rejected.from}`);
+    console.log(`Subject: ${rejected.subject}`);
+    console.log(`\nExtracted Data:`);
+    console.log(`  Company: "${rejected.extracted.company}"`);
+    console.log(`  Role: "${rejected.extracted.role}"`);
+    console.log(`  Location: "${rejected.extracted.location || 'N/A'}"`);
+    console.log(`  Salary: "${rejected.extracted.salary || 'N/A'}"`);
+    console.log(`  URL: "${rejected.extracted.url || 'N/A'}"`);
+    console.log(`\nRejection Reasons:`);
+    rejected.reasons.forEach(reason => console.log(`  • ${reason}`));
+    console.log(`\n${'-'.repeat(80)}`);
+  });
+  
+  console.log(`\n💡 To export rejected listings:\n   copy(window._rejectedListings)\n`);
+}
+
+// Make it globally available
+window.viewRejectedListings = viewRejectedListings;
+
+// ============================================
+// STRUCTURED PARSING HELPERS (JobSpy-inspired)
+// ============================================
+
+/**
+ * Parse salary string into structured data with confidence scoring
+ * Inspired by JobSpy's compensation parsing approach
+ */
+function parseStructuredSalary(salaryString, bodyText = '') {
+  const result = {
+    raw: salaryString || '',
+    interval: null,
+    min: null,
+    max: null,
+    currency: 'USD',
+    confidence: 'none',
+    source: 'not_found'
+  };
+  
+  if (!salaryString) return result;
+  
+  // Pattern: $80,000 - $100,000 or $80k - $100k
+  const rangeMatch = salaryString.match(/\$\s*([\d,]+\.?\d*)\s*k?\s*[-–to]+\s*\$?\s*([\d,]+\.?\d*)\s*k?/i);
+  if (rangeMatch) {
+    let min = rangeMatch[1].replace(/,/g, '');
+    let max = rangeMatch[2].replace(/,/g, '');
+    
+    // Handle 'k' notation (80k = 80,000)
+    if (/k/i.test(salaryString)) {
+      min = parseFloat(min) * 1000;
+      max = parseFloat(max) * 1000;
+    } else {
+      min = parseFloat(min);
+      max = parseFloat(max);
+    }
+    
+    result.min = min;
+    result.max = max;
+    result.confidence = 'high';
+    result.source = 'direct_data';
+  } else {
+    // Single value: $80,000 or $80k
+    const singleMatch = salaryString.match(/\$\s*([\d,]+\.?\d*)\s*k?/i);
+    if (singleMatch) {
+      let value = singleMatch[1].replace(/,/g, '');
+      if (/k/i.test(salaryString)) {
+        value = parseFloat(value) * 1000;
+      } else {
+        value = parseFloat(value);
+      }
+      result.min = value;
+      result.max = value;
+      result.confidence = 'medium';
+      result.source = 'direct_data';
+    }
+  }
+  
+  // Detect interval from context
+  if (result.min || result.max) {
+    const avgValue = result.max || result.min;
+    
+    if (/hour|hr|\/h/i.test(salaryString)) {
+      result.interval = 'hourly';
+    } else if (/month|monthly|\/mo/i.test(salaryString)) {
+      result.interval = 'monthly';
+    } else if (/week|weekly|\/wk/i.test(salaryString)) {
+      result.interval = 'weekly';
+    } else if (/year|annual|yearly|\/yr/i.test(salaryString)) {
+      result.interval = 'yearly';
+    } else {
+      // Infer from amount
+      if (avgValue >= 30000) {
+        result.interval = 'yearly';
+      } else if (avgValue >= 2000) {
+        result.interval = 'monthly';
+      } else if (avgValue >= 400) {
+        result.interval = 'weekly';
+      } else if (avgValue < 400) {
+        result.interval = 'hourly';
+      }
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Parse location string into structured data
+ * Inspired by JobSpy's location parsing approach
+ */
+function parseStructuredLocation(locationString) {
+  const result = {
+    raw: locationString || '',
+    city: null,
+    state: null,
+    country: 'USA',
+    isRemote: false,
+    confidence: 'none'
+  };
+  
+  if (!locationString) return result;
+  
+  // Check for remote indicators
+  if (/\b(remote|work from home|wfh|anywhere)\b/i.test(locationString)) {
+    result.isRemote = true;
+    result.confidence = 'high';
+    
+    // Still try to extract location if "Remote in California" pattern
+    const remoteInMatch = locationString.match(/remote\s+in\s+([^,]+)(?:,\s*([A-Z]{2}))?/i);
+    if (remoteInMatch) {
+      result.city = remoteInMatch[1]?.trim();
+      result.state = remoteInMatch[2]?.trim();
+    }
+    return result;
+  }
+  
+  // Pattern: "San Francisco, CA" or "New York, NY"
+  const cityStateMatch = locationString.match(/^([^,]+),\s*([A-Z]{2})$/);
+  if (cityStateMatch) {
+    result.city = cityStateMatch[1].trim();
+    result.state = cityStateMatch[2].trim();
+    result.confidence = 'high';
+    return result;
+  }
+  
+  // Pattern: "San Francisco" (city only)
+  const cityOnlyMatch = locationString.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/);
+  if (cityOnlyMatch) {
+    result.city = cityOnlyMatch[1].trim();
+    result.confidence = 'medium';
+    return result;
+  }
+  
+  // Pattern: "CA" (state only)
+  const stateOnlyMatch = locationString.match(/^([A-Z]{2})$/);
+  if (stateOnlyMatch) {
+    result.state = stateOnlyMatch[1];
+    result.confidence = 'medium';
+    return result;
+  }
+  
+  // Fallback: use raw string as city
+  result.city = locationString.trim();
+  result.confidence = 'low';
+  
+  return result;
+}
+
+/**
+ * Normalize job type to standard enum values
+ * Inspired by JobSpy's job_type enumeration
+ */
+function normalizeJobType(rawText) {
+  if (!rawText) return null;
+  
+  const text = rawText.toLowerCase();
+  
+  if (/full.?time|permanent/i.test(text)) return 'fulltime';
+  if (/part.?time/i.test(text)) return 'parttime';
+  if (/intern|internship|co-?op/i.test(text)) return 'internship';
+  if (/contract|freelance|temp|consultant/i.test(text)) return 'contract';
+  
+  return null;
+}
+
+/**
+ * Calculate overall confidence score for a parsed job
+ */
+function calculateJobConfidence(jobData) {
+  let score = 0;
+  let maxScore = 0;
+  
+  // Company (weight: 30)
+  if (jobData._meta?.company?.confidence === 'high') score += 30;
+  else if (jobData._meta?.company?.confidence === 'medium') score += 20;
+  else if (jobData._meta?.company?.confidence === 'low') score += 10;
+  maxScore += 30;
+  
+  // Role (weight: 30)
+  if (jobData._meta?.role?.confidence === 'high') score += 30;
+  else if (jobData._meta?.role?.confidence === 'medium') score += 20;
+  else if (jobData._meta?.role?.confidence === 'low') score += 10;
+  maxScore += 30;
+  
+  // Location (weight: 20)
+  if (jobData._meta?.location?.confidence === 'high') score += 20;
+  else if (jobData._meta?.location?.confidence === 'medium') score += 13;
+  else if (jobData._meta?.location?.confidence === 'low') score += 7;
+  maxScore += 20;
+  
+  // Salary (weight: 10)
+  if (jobData._meta?.salary?.confidence === 'high') score += 10;
+  else if (jobData._meta?.salary?.confidence === 'medium') score += 6;
+  else if (jobData._meta?.salary?.confidence === 'low') score += 3;
+  maxScore += 10;
+  
+  // URL (weight: 10)
+  if (jobData._meta?.url?.confidence === 'high') score += 10;
+  else if (jobData._meta?.url?.confidence === 'medium') score += 6;
+  maxScore += 10;
+  
+  const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+  
+  if (percentage >= 80) return 'high';
+  if (percentage >= 50) return 'medium';
+  return 'low';
+}
+
+// ============================================
+// LISTING VALIDATION & QUALITY CONTROL
+// ============================================
+
+/**
+ * Validate if extracted data represents a real job listing
+ * Rejects marketing fluff, incomplete data, and garbage
+ */
+function isValidListing(listing, emailBody = '') {
+  const reasons = [];
+  
+  // CRITICAL: Must have company and role
+  if (!listing.company || listing.company === 'Unknown') {
+    reasons.push('No company name found');
+    return { isValid: false, reasons, confidence: 'rejected' };
+  }
+  
+  if (!listing.role || listing.role === 'Various Roles') {
+    reasons.push('No specific role title found');
+    return { isValid: false, reasons, confidence: 'rejected' };
+  }
+  
+  // Blacklist: Marketing/system terms that aren't companies
+  const companyBlacklist = [
+    /career advisor/i,
+    /your coach/i,
+    /recruiter team/i,
+    /support team/i,
+    /phil|zippy|indeed assist/i, // AI mascots
+    /unsubscribe/i,
+    /click here/i,
+    /view (all|more)/i,
+    /^(and|or|the|a)\s/i, // Starts with article
+  ];
+  
+  for (const pattern of companyBlacklist) {
+    if (pattern.test(listing.company)) {
+      reasons.push(`Company name looks like marketing text: "${listing.company}"`);
+      return { isValid: false, reasons, confidence: 'rejected' };
+    }
+  }
+  
+  // Blacklist: Role titles that are clearly not jobs
+  const roleBlacklist = [
+    /think this job/i,
+    /might be right/i,
+    /new job(s)? (at|for)/i,
+    /career advisor/i,
+    /hi |hello |hey /i, // Greetings
+    /^(and|or|the|a)\s/i,
+    /unsubscribe/i,
+    /click here/i,
+    /view details/i,
+    /apply now/i,
+    /^(welcome|thanks|congratulations)/i,
+  ];
+  
+  for (const pattern of roleBlacklist) {
+    if (pattern.test(listing.role)) {
+      reasons.push(`Role title looks like marketing text: "${listing.role}"`);
+      return { isValid: false, reasons, confidence: 'rejected' };
+    }
+  }
+  
+  // Role must contain job-related terms
+  const jobTerms = /engineer|developer|manager|analyst|designer|architect|scientist|specialist|coordinator|director|associate|assistant|supervisor|lead|senior|junior|intern|administrator|technician|consultant|representative|officer|operator|worker|assembler|mechanic|driver|nurse|teacher|accountant|sales|marketing|product|project/i;
+  
+  if (!jobTerms.test(listing.role)) {
+    reasons.push(`Role doesn't contain job-related terms: "${listing.role}"`);
+    return { isValid: false, reasons, confidence: 'rejected' };
+  }
+  
+  // URL validation (if present)
+  if (listing.url) {
+    // Reject image URLs
+    if (/\.(jpg|jpeg|png|gif|svg|webp)/i.test(listing.url)) {
+      reasons.push(`URL is an image file: "${listing.url}"`);
+      return { isValid: false, reasons, confidence: 'rejected' };
+    }
+    
+    // Reject unsubscribe/preferences links
+    if (/unsubscribe|preferences|settings|profile/i.test(listing.url)) {
+      reasons.push(`URL is not a job link: "${listing.url}"`);
+      return { isValid: false, reasons, confidence: 'rejected' };
+    }
+  }
+  
+  // Location validation: Check for truncated city names
+  if (listing.location) {
+    // Single word locations without state are suspicious (except known cities)
+    const knownCities = /^(remote|austin|boston|chicago|dallas|denver|houston|miami|phoenix|portland|seattle|atlanta|anywhere)$/i;
+    const hasState = /,\s*[A-Z]{2}/.test(listing.location);
+    const isSingleWord = !/\s/.test(listing.location.trim());
+    
+    if (isSingleWord && !hasState && !knownCities.test(listing.location)) {
+      reasons.push(`Location might be truncated: "${listing.location}" (missing city prefix?)`);
+      // Don't reject, just warn
+    }
+  }
+  
+  // Company name length check (very short names are suspicious)
+  if (listing.company.length < 2) {
+    reasons.push(`Company name too short: "${listing.company}"`);
+    return { isValid: false, reasons, confidence: 'rejected' };
+  }
+  
+  // Role length check (too short or too long)
+  if (listing.role.length < 3) {
+    reasons.push(`Role title too short: "${listing.role}"`);
+    return { isValid: false, reasons, confidence: 'rejected' };
+  }
+  
+  if (listing.role.length > 150) {
+    reasons.push(`Role title too long (probably a paragraph): "${listing.role.substring(0, 50)}..."`);
+    return { isValid: false, reasons, confidence: 'rejected' };
+  }
+  
+  // If we got here, it's probably valid
+  if (reasons.length > 0) {
+    return { isValid: true, reasons, confidence: 'low' }; // Valid but with warnings
+  }
+  
+  return { isValid: true, reasons: [], confidence: 'acceptable' };
+}
+
+/**
+ * Extract job listings from HTML structure
+ * Finds repeating job blocks instead of parsing marketing text
+ */
+function extractJobListingsFromHTML(htmlBody, subject, from) {
+  if (!htmlBody) return [];
+  
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlBody, 'text/html');
+    const listings = [];
+    
+    // Strategy 1: Find all links that look like job links
+    const potentialJobLinks = doc.querySelectorAll('a[href]');
+    const jobLinks = Array.from(potentialJobLinks).filter(link => {
+      const href = link.href || '';
+      const text = link.textContent || '';
+      
+      // Must be a real URL
+      if (!href.startsWith('http')) return false;
+      
+      // Exclude marketing links
+      if (/unsubscribe|preferences|settings|facebook|twitter|linkedin\.com\/company/i.test(href)) return false;
+      
+      // Exclude image links
+      if (/\.(jpg|jpeg|png|gif|svg)/i.test(href)) return false;
+      
+      // Include if URL contains job-related terms
+      if (/job|apply|career|position|opening|vacancy/i.test(href)) return true;
+      
+      // Include if link text is job-related
+      if (/apply|view job|see details|learn more/i.test(text)) return true;
+      
+      return false;
+    });
+    
+    console.log(`Found ${jobLinks.length} potential job links in email`);
+    
+    // For each job link, extract the surrounding context
+    for (const link of jobLinks) {
+      const listing = extractListingFromContext(link, doc);
+      
+      if (listing) {
+        listing.url = link.href;
+        listings.push(listing);
+      }
+    }
+    
+    // Remove duplicates (same URL)
+    const uniqueListings = [];
+    const seenUrls = new Set();
+    
+    for (const listing of listings) {
+      if (!seenUrls.has(listing.url)) {
+        seenUrls.add(listing.url);
+        uniqueListings.push(listing);
+      }
+    }
+    
+    console.log(`Extracted ${uniqueListings.length} unique listings from HTML structure`);
+    return uniqueListings;
+    
+  } catch (error) {
+    console.error('Error parsing HTML structure:', error);
+    return [];
+  }
+}
+
+/**
+ * Extract listing data from the context around a job link
+ */
+function extractListingFromContext(linkElement, doc) {
+  // Find the container element (usually a <td>, <div>, or <table>)
+  let container = linkElement.parentElement;
+  let depth = 0;
+  
+  // Walk up the DOM tree to find a substantial container
+  while (container && depth < 5) {
+    const text = container.textContent || '';
+    
+    // Stop if we found a container with enough text (50-500 chars is reasonable for a job listing)
+    if (text.length > 50 && text.length < 1000) {
+      break;
+    }
+    
+    container = container.parentElement;
+    depth++;
+  }
+  
+  if (!container) return null;
+  
+  const text = container.textContent || '';
+  const html = container.innerHTML || '';
+  
+  // Extract company name
+  // Usually near "at" or company name is in bold/strong tags
+  let company = '';
+  const companyPatterns = [
+    /(?:at|@)\s+([A-Z][A-Za-z0-9\s&,.-]+?)(?:\s+in|\s+\||$)/,
+    /<(?:strong|b)>([A-Z][A-Za-z0-9\s&,.-]+?)<\/(?:strong|b)>/,
+  ];
+  
+  for (const pattern of companyPatterns) {
+    const match = text.match(pattern) || html.match(pattern);
+    if (match && match[1]) {
+      company = match[1].trim();
+      break;
+    }
+  }
+  
+  // Extract role title
+  // Usually the first line or in a header tag
+  let role = '';
+  const roleElement = container.querySelector('h1, h2, h3, h4, strong, b');
+  if (roleElement) {
+    role = roleElement.textContent.trim();
+  } else {
+    // Try first line of text
+    const lines = text.split('\n').filter(l => l.trim().length > 0);
+    if (lines.length > 0) {
+      role = lines[0].trim();
+    }
+  }
+  
+  // Extract location
+  let location = '';
+  const locationPatterns = [
+    /(?:location|located in|in)\s*:?\s*([A-Za-z\s]+,\s*[A-Z]{2})/i,
+    /([A-Za-z\s]+,\s*[A-Z]{2})\s*(?:\||$)/,
+  ];
+  
+  for (const pattern of locationPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      location = match[1].trim();
+      break;
+    }
+  }
+  
+  // Extract salary
+  let salary = '';
+  const salaryMatch = text.match(/\$[\d,]+(?:\.\d{2})?\s*[-–to]+\s*\$?[\d,]+(?:\.\d{2})?(?:\s*(?:per|\/)\s*(?:hour|hr|year|yr|month|mo))?/i);
+  if (salaryMatch) {
+    salary = salaryMatch[0];
+  }
+  
+  return {
+    company,
+    role,
+    location,
+    salary,
+    url: '', // Will be set by caller
+    rawContext: text.substring(0, 300), // Keep first 300 chars for debugging
+  };
+}
+
+// ============================================
+// END LISTING VALIDATION & QUALITY CONTROL
+// ============================================
+
 function parseJobEmail(message) {
   try {
     const headers = message.payload.headers;
     const subject = headers.find(h => h.name === 'Subject')?.value || '';
     const from = headers.find(h => h.name === 'From')?.value || '';
     
-    console.log('Parsing email from:', from, '| Subject:', subject);
+    console.log('📧 Parsing email from:', from, '| Subject:', subject);
     
-    // Get email body
-    let body = '';
-    if (message.payload.body.data) {
-      body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    } else if (message.payload.parts) {
-      const textPart = message.payload.parts.find(part => part.mimeType === 'text/plain' || part.mimeType === 'text/html');
+    // Get email body (prefer HTML for structure parsing)
+    let htmlBody = '';
+    let textBody = '';
+    
+    if (message.payload.parts) {
+      const htmlPart = message.payload.parts.find(part => part.mimeType === 'text/html');
+      const textPart = message.payload.parts.find(part => part.mimeType === 'text/plain');
+      
+      if (htmlPart && htmlPart.body.data) {
+        htmlBody = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      }
       if (textPart && textPart.body.data) {
-        body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        textBody = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      }
+    } else if (message.payload.body.data) {
+      const body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      // Guess if it's HTML or text
+      if (/<html|<body|<div/i.test(body)) {
+        htmlBody = body;
+      } else {
+        textBody = body;
       }
     }
     
-    // Use universal field mapper first
+    const body = htmlBody || textBody; // Use whatever we got
+    
+    // STRATEGY 1: Try HTML structure extraction (best quality)
+    if (htmlBody) {
+      console.log('🔍 Attempting HTML structure extraction...');
+      const htmlListings = extractJobListingsFromHTML(htmlBody, subject, from);
+      
+      if (htmlListings.length > 0) {
+        console.log(`✅ Found ${htmlListings.length} listings via HTML extraction`);
+        
+        // Validate and return the first valid listing
+        for (const listing of htmlListings) {
+          const validation = isValidListing(listing, htmlBody);
+          
+          if (validation.isValid) {
+            console.log('✅ Valid listing found via HTML extraction');
+            listing.source = from.includes('linkedin.com') ? 'LinkedIn' :
+                           from.includes('indeed.com') ? 'Indeed' :
+                           from.includes('glassdoor.com') ? 'Glassdoor' :
+                           from.includes('ziprecruiter.com') ? 'ZipRecruiter' : 'Unknown';
+            listing.notes = `Found via ${listing.source} job alert (HTML extraction)`;
+            
+            // Add metadata
+            listing._meta = {
+              company: { confidence: 'high', source: 'html_structure' },
+              role: { confidence: 'high', source: 'html_structure' },
+              location: { confidence: listing.location ? 'medium' : 'none', source: 'html_structure' },
+              salary: { confidence: listing.salary ? 'medium' : 'none', source: 'html_structure' },
+              url: { confidence: 'high', source: 'html_structure' },
+              overallConfidence: 'high',
+              extractionMethod: 'html_structure',
+              validationWarnings: validation.reasons
+            };
+            
+            return listing;
+          } else {
+            console.log('❌ HTML-extracted listing failed validation:', validation.reasons.join(', '));
+          }
+        }
+      } else {
+        console.log('⚠️  No listings found via HTML extraction, falling back to text parsing');
+      }
+    }
+    
+    // STRATEGY 2: Fall back to text-based parsing
+    console.log('🔍 Attempting text-based parsing...');
     let jobData = mapEmailFields(subject, body, from);
     
-    // Fallback to specific parsers if field mapper fails
+    // Try specific parsers if universal mapper fails
     if (!jobData || jobData.company === 'Unknown' || jobData.role === 'Various Roles') {
       if (from.includes('linkedin.com')) {
-        return parseLinkedInJob(subject, body);
+        jobData = parseLinkedInJob(subject, body);
       } else if (from.includes('indeed.com')) {
-        return parseIndeedJob(subject, body);
+        jobData = parseIndeedJob(subject, body);
       } else if (from.includes('glassdoor.com')) {
-        return parseGlassdoorJob(subject, body);
+        jobData = parseGlassdoorJob(subject, body);
       } else if (from.includes('greenhouse.io') || from.includes('lever.co')) {
-        return parseATSJob(subject, body);
+        jobData = parseATSJob(subject, body);
       } else {
-        // Try generic parsing for other job sources
-        return parseGenericJob(subject, body, from);
+        jobData = parseGenericJob(subject, body, from);
+      }
+    }
+    
+    // VALIDATION: Check if we got garbage
+    if (jobData) {
+      const validation = isValidListing(jobData, body);
+      
+      if (!validation.isValid) {
+        console.log('❌ REJECTED: Listing failed validation');
+        console.log('   Company:', jobData.company);
+        console.log('   Role:', jobData.role);
+        console.log('   Reasons:', validation.reasons.join('; '));
+        
+        // Track rejected listing
+        if (!window._rejectedListings) window._rejectedListings = [];
+        window._rejectedListings.push({
+          timestamp: new Date().toISOString(),
+          from,
+          subject,
+          extracted: jobData,
+          reasons: validation.reasons
+        });
+        
+        return null; // Don't import garbage
+      }
+      
+      // Add validation warnings to metadata if present
+      if (validation.reasons.length > 0) {
+        if (!jobData._meta) jobData._meta = {};
+        jobData._meta.validationWarnings = validation.reasons;
+        console.log('⚠️  Valid but with warnings:', validation.reasons.join('; '));
+      } else {
+        console.log('✅ Listing passed validation');
       }
     }
     
     return jobData;
   } catch (error) {
-    console.error('Error parsing email:', error);
+    console.error('💥 Error parsing email:', error);
     return null;
   }
 }
@@ -6847,7 +7607,20 @@ function mapEmailFields(subject, body, from) {
   let salary = '';
   let url = '';
   
-  // Try subject line patterns first
+  // Track confidence for each field
+  let companyConfidence = 'none';
+  let roleConfidence = 'none';
+  let locationConfidence = 'none';
+  let salaryConfidence = 'none';
+  let urlConfidence = 'none';
+  
+  let companySource = 'not_found';
+  let roleSource = 'not_found';
+  let locationSource = 'not_found';
+  let salarySource = 'not_found';
+  let urlSource = 'not_found';
+  
+  // Try subject line patterns first (high confidence)
   for (const pattern of parserConfig.patterns.subject) {
     const match = subject.match(pattern);
     if (match) {
@@ -6856,47 +7629,85 @@ function mapEmailFields(subject, body, from) {
         role = match[1]?.trim() || '';
         company = match[2]?.trim() || '';
         location = match[3]?.trim() || '';
+        roleConfidence = 'high';
+        companyConfidence = 'high';
+        locationConfidence = 'high';
+        roleSource = 'subject_line';
+        companySource = 'subject_line';
+        locationSource = 'subject_line';
       } else if (pattern.source.includes('@')) {
         // Format: "Role @ Company"
         role = match[1]?.trim() || '';
         company = match[2]?.trim() || '';
+        roleConfidence = 'high';
+        companyConfidence = 'high';
+        roleSource = 'subject_line';
+        companySource = 'subject_line';
       } else if (pattern.source.includes('for')) {
         // Format: "Company for Role"
         company = match[1]?.trim() || '';
         role = match[2]?.trim() || '';
+        companyConfidence = 'high';
+        roleConfidence = 'high';
+        companySource = 'subject_line';
+        roleSource = 'subject_line';
       } else if (pattern.source.includes('in') && pattern.source.includes('Apply')) {
         // Format: "Company1, Company2 in Location. Apply Now"
         const companies = match[1]?.trim().split(',').map(c => c.trim()) || [];
         company = companies[0] || 'Unknown';
         location = match[2]?.trim() || '';
         role = 'Various Roles';
+        companyConfidence = 'medium';
+        locationConfidence = 'high';
+        roleConfidence = 'low';
+        companySource = 'subject_line';
+        locationSource = 'subject_line';
+        roleSource = 'fallback';
       } else if (pattern.source.includes('is hiring')) {
         // Format: "Company is hiring"
         company = match[1]?.trim() || '';
         role = 'Various Roles';
+        companyConfidence = 'high';
+        roleConfidence = 'low';
+        companySource = 'subject_line';
+        roleSource = 'fallback';
       } else if (pattern.source.includes('I think this job')) {
         // Format: "Jared, I think this job might be right for you!"
         company = 'Unknown';
         role = 'Various Roles';
+        companyConfidence = 'low';
+        roleConfidence = 'low';
+        companySource = 'fallback';
+        roleSource = 'fallback';
       } else if (pattern.source.includes('has an open position')) {
         // Format: "💼 Jared, Company. has an open position"
         company = match[1]?.trim() || '';
         role = 'Various Roles';
+        companyConfidence = 'high';
+        roleConfidence = 'low';
+        companySource = 'subject_line';
+        roleSource = 'fallback';
       } else if (pattern.source.includes('Did you see this job')) {
         // Format: "Did you see this job?"
         company = 'Unknown';
         role = 'Various Roles';
+        companyConfidence = 'low';
+        roleConfidence = 'low';
+        companySource = 'fallback';
+        roleSource = 'fallback';
       }
       break; // Use first successful match
     }
   }
   
-  // Try body patterns for missing fields
+  // Try body patterns for missing fields (medium confidence)
   if (!company && parserConfig.patterns.body.company) {
     for (const pattern of parserConfig.patterns.body.company) {
       const match = body.match(pattern);
       if (match) {
         company = match[1]?.trim() || '';
+        companyConfidence = 'medium';
+        companySource = 'body_pattern';
         break;
       }
     }
@@ -6907,6 +7718,8 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         location = match[1]?.trim() || '';
+        locationConfidence = 'medium';
+        locationSource = 'body_pattern';
         break;
       }
     }
@@ -6917,12 +7730,14 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         salary = match[0] || '';
+        salaryConfidence = 'medium';
+        salarySource = 'body_pattern';
         break;
       }
     }
   }
   
-  // Additional salary extraction patterns
+  // Additional salary extraction patterns (low confidence)
   if (!salary) {
     // Try various salary patterns
     const salaryPatterns = [
@@ -6936,6 +7751,8 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         salary = match[0];
+        salaryConfidence = 'low';
+        salarySource = 'description';
         break;
       }
     }
@@ -6946,17 +7763,23 @@ function mapEmailFields(subject, body, from) {
       const match = body.match(pattern);
       if (match) {
         url = match[0] || '';
+        urlConfidence = 'medium';
+        urlSource = 'body_pattern';
         break;
       }
     }
   }
   
-  // Additional body parsing for common patterns
+  // Additional body parsing for common patterns (low confidence)
   if (!company || company === 'Unknown') {
     // Try to extract company from body text
     const companyMatch = body.match(/(?:at|@)\s+([^<\n,]+?)(?:\s+in\s+|\s*$)/i);
     if (companyMatch) {
       company = companyMatch[1].trim();
+      if (companyConfidence === 'none' || company !== 'Unknown') {
+        companyConfidence = 'low';
+        companySource = 'description';
+      }
     }
   }
   
@@ -6965,6 +7788,10 @@ function mapEmailFields(subject, body, from) {
     const locationMatch = body.match(/([A-Z][a-z]+\s+[A-Z][a-z]+,\s*[A-Z]{2})/);
     if (locationMatch) {
       location = locationMatch[1];
+      if (locationConfidence === 'none') {
+        locationConfidence = 'low';
+        locationSource = 'description';
+      }
     }
   }
   
@@ -6988,6 +7815,10 @@ function mapEmailFields(subject, body, from) {
     const roleMatch = body.match(/([A-Z][a-z\s]+(?:Manager|Specialist|Engineer|Director|Analyst|Coordinator|Representative|Advisor|Consultant|Executive))/i);
     if (roleMatch) {
       role = roleMatch[1].trim();
+      if (roleConfidence === 'none' || roleConfidence === 'low') {
+        roleConfidence = 'medium';
+        roleSource = 'description';
+      }
     }
   }
   
@@ -7034,17 +7865,71 @@ function mapEmailFields(subject, body, from) {
   if (!company && !role) {
     company = 'Unknown';
     role = subject;
+    companyConfidence = 'low';
+    roleConfidence = 'low';
+    companySource = 'fallback';
+    roleSource = 'fallback';
   }
   
-  return {
+  // Use structured parsing helpers
+  const structuredSalary = parseStructuredSalary(salary, body);
+  const structuredLocation = parseStructuredLocation(location);
+  
+  // Update confidence based on structured parsing
+  if (structuredSalary.confidence !== 'none') {
+    salaryConfidence = structuredSalary.confidence;
+  }
+  if (structuredLocation.confidence !== 'none' && locationConfidence === 'none') {
+    locationConfidence = structuredLocation.confidence;
+  }
+  
+  // Check URL
+  if (url && url.startsWith('http')) {
+    urlConfidence = 'high';
+    urlSource = 'direct_data';
+  }
+  
+  const jobData = {
     company: company || 'Unknown',
     role: role || 'Various Roles',
     location: location || '',
     salary: salary || '',
     url: url || '',
     source: source.charAt(0).toUpperCase() + source.slice(1),
-    notes: `Found via ${source} job alert`
+    notes: `Found via ${source} job alert`,
+    
+    // Metadata for confidence tracking
+    _meta: {
+      company: {
+        confidence: companyConfidence,
+        source: companySource
+      },
+      role: {
+        confidence: roleConfidence,
+        source: roleSource
+      },
+      location: {
+        confidence: locationConfidence,
+        source: locationSource,
+        structured: structuredLocation
+      },
+      salary: {
+        confidence: salaryConfidence,
+        source: salarySource,
+        structured: structuredSalary
+      },
+      url: {
+        confidence: urlConfidence,
+        source: urlSource
+      },
+      overallConfidence: null // will be calculated
+    }
   };
+  
+  // Calculate overall confidence
+  jobData._meta.overallConfidence = calculateJobConfidence(jobData);
+  
+  return jobData;
 }
 
 // Helper function to find full city name from partial city in email body

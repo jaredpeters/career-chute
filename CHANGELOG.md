@@ -1,0 +1,128 @@
+# Changelog
+
+All notable changes to Career Chute will be documented in this file.
+
+---
+
+## [3.1.0] - 2025-10-08
+
+### 🎯 Major Features
+- **Intelligent Email Parser** - Complete rebuild with validation system
+  - HTML structure parsing (finds real job blocks, not marketing text)
+  - Multi-listing support (extracts 2-5 jobs per email)
+  - Strict validation (rejects "Phil your career advisor" type garbage)
+  - Blacklist/whitelist system for companies and roles
+  - URL validation (no more image links)
+  - Location truncation detection
+
+- **Parser Quality Control**
+  - `isValidListing()` - Validates before importing
+  - `extractJobListingsFromHTML()` - Structure-based extraction
+  - `viewRejectedListings()` - Debug tool in console
+  - Rejection tracking with detailed reasons
+
+- **Confidence Scoring System** (JobSpy-inspired)
+  - Per-field confidence (high/medium/low/none)
+  - Structured salary parsing (min/max/interval/currency)
+  - Structured location parsing (city/state/country/remote)
+  - Visual confidence indicators (🟢🟡🔴⚪)
+
+### 🔧 Fixes
+- Gmail session token auto-refresh (no more hourly expiry)
+- Token countdown display in UI
+- Better HTML/text body handling
+
+### 📊 Statistics
+- Added: rejected count in scan results
+- Better breakdown of skipped vs rejected jobs
+- Console logging with emojis (📧 🔍 ✅ ❌)
+
+### 📚 Documentation
+- `PARSER_IMPROVEMENTS.md` - Full technical details
+- `PARSER_QUICK_REFERENCE.md` - Quick guide
+- `GMAIL_SESSION_FIX.md` - Token management explanation
+- `PARSING_ENHANCEMENTS.md` - Confidence scoring system
+
+---
+
+## [3.0.0] - 2025-10-07
+
+### Features
+- Gmail job alert integration
+- Email field mapping system
+- Job prioritization with role/city grading
+- Employer and city blocking
+- Google Sheets sync
+- Parser training system
+
+---
+
+## Version Numbering
+
+We use [Semantic Versioning](https://semver.org/):
+
+**MAJOR.MINOR.PATCH** (e.g., 3.1.0)
+
+- **MAJOR**: Breaking changes or complete rebuilds
+- **MINOR**: New features, backwards-compatible
+- **PATCH**: Bug fixes, small improvements
+
+### When to Bump:
+
+- **Major (3.x.x → 4.0.0)**: 
+  - Complete UI redesign
+  - Database schema changes
+  - Breaking API changes
+
+- **Minor (3.0.x → 3.1.0)**:
+  - New parser features
+  - New integration (Sheets, Gmail)
+  - Major algorithm improvements
+
+- **Patch (3.1.0 → 3.1.1)**:
+  - Bug fixes
+  - Small UI tweaks
+  - Performance improvements
+  - Documentation updates
+
+---
+
+## How to Check Your Version
+
+1. Go to **Settings** page
+2. Look at top: `v3.1.0 • Build: 2025-10-08`
+3. Or check console: `🚀 Career Chute v3.1.0 (2025-10-08)`
+
+---
+
+## Deployment Notes
+
+### Gmail Session Behavior
+**Q: Why does Gmail session expire after deploy?**
+
+A: This is **normal** behavior:
+- Access tokens are stored in browser memory
+- New code = fresh JavaScript execution
+- Token is still valid, but needs to be reconnected
+- Solution: Just click "Connect Gmail" again after each deploy
+
+**Token Auto-Refresh:**
+- Tokens auto-refresh 5 minutes before expiry
+- You'll see countdown in status: `(token valid for 58m)`
+- Should stay connected indefinitely during active use
+
+---
+
+## Next Release Preview
+
+### [3.2.0] - Planned Features
+- Interactive parser training UI
+- Smart location auto-completion
+- Salary range filtering
+- Remote-only job filter
+- Pattern learning system
+
+### [3.1.1] - Bug Fixes (if needed)
+- Parser edge cases
+- LinkedIn specific formats
+- Location parsing improvements
