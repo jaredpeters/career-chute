@@ -1910,6 +1910,10 @@ let state = {
   roleGrades: {
     // Role titles mapped to grades: 'A', 'B', 'C', or 'ungraded' (gray)
     // Example: 'Solutions Engineer': 'A', 'Account Executive': 'B'
+  },
+  blockedEmployers: {
+    // List of company names that should be blocked from future imports
+    // Example: 'Spam Company': true, 'Bad Employer': true
   }
 };
 
@@ -5578,7 +5582,27 @@ function renderJobRow(job) {
         <input type="checkbox" onchange="updateSelectedCount()" data-job-id="${job.id}" style="width: 14px; height: 14px;">
       </div>
       <div style="min-width: 0;">
-        <div style="font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</div>
+        <div style="font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px;">
+          <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.company}</span>
+          <button 
+            onclick="blockEmployer('${job.company.replace(/'/g, "\\'")}')" 
+            style="
+              background: #6b7280; 
+              color: white; 
+              border: none; 
+              width: 16px; 
+              height: 16px; 
+              border-radius: 50%; 
+              font-size: 10px; 
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              flex-shrink: 0;
+            "
+            title="Block this employer (never see jobs from them again)"
+          >×</button>
+        </div>
         <button 
           onclick="cycleRoleGrade('${roleTitle.replace(/'/g, "\\'")}')" 
           style="
@@ -6065,6 +6089,13 @@ async function scanJobAlerts() {
         );
         
         if (!isDuplicate) {
+          // Check if employer is blocked - skip these
+          if (state.blockedEmployers[jobData.company]) {
+            console.log('Skipping blocked employer:', jobData.company, '-', jobData.role);
+            skippedCount++;
+            continue;
+          }
+          
           // Check if role is marked as Grade C (red) - skip these
           const roleTitle = jobData.role.trim();
           const grade = state.roleGrades[roleTitle];
@@ -6080,8 +6111,8 @@ async function scanJobAlerts() {
             id: 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
             ...jobData,
             status: 'queued',
-            addedToQueue: new Date().toISOString(),
-            source: 'gmail_scan'
+            addedToQueue: new Date().toISOString()
+            // source will come from jobData (parsed from notes)
           };
           
           state.applications.push(newJob);
@@ -6204,6 +6235,7 @@ function parseLinkedInJob(subject, body) {
       location,
       salary,
       url,
+      source: 'LinkedIn',
       notes: 'Found via LinkedIn job alert'
     };
   }
@@ -6275,6 +6307,7 @@ function parseIndeedJob(subject, body) {
     location,
     salary,
     url,
+    source: 'Indeed',
     notes: 'Found via Indeed job alert'
   };
 }
@@ -6332,6 +6365,7 @@ function parseGlassdoorJob(subject, body) {
     location,
     salary,
     url,
+    source: 'Glassdoor',
     notes: 'Found via Glassdoor job alert'
   };
 }
@@ -6368,6 +6402,7 @@ function parseATSJob(subject, body) {
     location,
     salary: '',
     url,
+    source: 'ATS',
     notes: 'Found via ATS job alert'
   };
 }
@@ -6397,7 +6432,7 @@ function parseGenericJob(subject, body, from) {
       const companies = match[1].split(',').map(c => c.trim());
       company = companies[0]; // Take first company
       location = match[2].trim();
-      role = 'Multiple Companies'; // Generic role for multi-company listings
+      role = 'Various Roles'; // Generic role for multi-company listings
     } else {
       // Pattern 3: "Company is hiring: Role"
       match = subject.match(/(.+?)\s+is\s+hiring[:\s]+(.+)/i);
@@ -6405,10 +6440,22 @@ function parseGenericJob(subject, body, from) {
         company = match[1].trim();
         role = match[2].trim();
       } else {
-        // Fallback: use subject as role, try to extract company from body
-        role = subject;
-        const companyMatch = body.match(/company[:\s]+([^<\n]+)/i);
-        company = companyMatch ? companyMatch[1].trim() : 'Unknown';
+        // Pattern 4: Check if subject contains location pattern that got misassigned
+        const locationPattern = /in\s+([A-Z][a-z\s,]+(?:,\s*[A-Z]{2})?)\s*\.\s*Apply\s+Now/i;
+        const locationMatch = subject.match(locationPattern);
+        if (locationMatch) {
+          // This looks like a location was assigned as role, try to extract company
+          const beforeLocation = subject.replace(locationPattern, '').trim();
+          const companies = beforeLocation.split(',').map(c => c.trim());
+          company = companies[0] || 'Unknown';
+          role = 'Various Roles';
+          location = locationMatch[1].trim();
+        } else {
+          // Fallback: use subject as role, try to extract company from body
+          role = subject;
+          const companyMatch = body.match(/company[:\s]+([^<\n]+)/i);
+          company = companyMatch ? companyMatch[1].trim() : 'Unknown';
+        }
       }
     }
   }
@@ -6449,8 +6496,34 @@ function parseGenericJob(subject, body, from) {
     location,
     salary,
     url,
+    source,
     notes: `Found via ${source} job alert`
   };
+}
+
+function blockEmployer(companyName) {
+  if (!confirm(`Are you sure you want to block "${companyName}" and never see jobs from them again?`)) {
+    return;
+  }
+  
+  // Add to blocked list
+  state.blockedEmployers[companyName] = true;
+  
+  // Remove all existing jobs from this employer
+  const initialCount = state.applications.length;
+  state.applications = state.applications.filter(app => app.company !== companyName);
+  const removedCount = initialCount - state.applications.length;
+  
+  saveToFirebase();
+  renderJobQueue();
+  renderPlanScreen();
+  
+  // Auto-sync to Google Sheets if enabled
+  if (state.sheets.enabled && state.sheets.autoSync) {
+    syncToGoogleSheets().catch(err => console.warn('Auto-sync failed:', err));
+  }
+  
+  alert(`Blocked "${companyName}"!\n\nRemoved ${removedCount} existing job(s) from this employer.\n\nFuture Gmail scans will skip jobs from this company.`);
 }
 
 function updateSelectedCount() {
@@ -6501,22 +6574,78 @@ function viewJobDetails(jobId) {
   const job = state.applications.find(app => app.id === jobId);
   if (!job) return;
   
-  const details = `
-📋 Job Details
-
-Company: ${job.company || 'N/A'}
-Role: ${job.role || 'N/A'}
-Location: ${job.location || 'N/A'}
-Salary: ${job.salary || 'N/A'}
-Status: ${job.status || 'queued'}
-Match Score: ${job.matchScore || calculateJobScore(job)}%
-Priority: ${job.priority || getJobPriority(job)}
-
-${job.notes ? 'Notes: ' + job.notes : ''}
-${job.addedToQueue ? 'Added: ' + new Date(job.addedToQueue).toLocaleString() : ''}
-  `.trim();
+  // Create a modal instead of alert for better URL handling
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  `;
   
-  alert(details);
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: var(--text);
+  `;
+  
+  const urlSection = job.url ? `
+    <div style="margin: 16px 0;">
+      <strong>Job URL:</strong><br>
+      <a href="${job.url}" target="_blank" rel="noopener noreferrer" 
+         style="color: var(--accent); text-decoration: underline; word-break: break-all;">
+        ${job.url}
+      </a>
+    </div>
+  ` : '';
+  
+  content.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="margin: 0; color: var(--text);">📋 Job Details</h3>
+      <button onclick="this.closest('.modal').remove()" 
+              style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--muted);">
+        ×
+      </button>
+    </div>
+    
+    <div style="line-height: 1.6;">
+      <div><strong>Company:</strong> ${job.company || 'N/A'}</div>
+      <div><strong>Role:</strong> ${job.role || 'N/A'}</div>
+      <div><strong>Location:</strong> ${job.location || 'N/A'}</div>
+      <div><strong>Salary:</strong> ${job.salary || 'N/A'}</div>
+      <div><strong>Status:</strong> ${job.status || 'queued'}</div>
+      <div><strong>Source:</strong> ${job.source || 'Unknown'}</div>
+      
+      ${urlSection}
+      
+      ${job.notes ? `<div style="margin-top: 16px;"><strong>Notes:</strong> ${job.notes}</div>` : ''}
+      ${job.addedToQueue ? `<div style="margin-top: 8px; color: var(--muted); font-size: 14px;">Added: ${new Date(job.addedToQueue).toLocaleString()}</div>` : ''}
+    </div>
+  `;
+  
+  modal.className = 'modal';
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  
+  // Close on background click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
   
   // Open URL if available
   if (job.url) {
