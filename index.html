@@ -2256,8 +2256,12 @@ function saveToFirebase() {
   
   try {
     updateSyncStatus('syncing', 'Saving...');
+    
+    // Filter out emailParsers (contains RegExp objects that can't be serialized)
+    const { emailParsers, ...saveableState } = state;
+    
     db.collection('users').doc(userId).set({
-      ...state,
+      ...saveableState,
       lastUpdated: new Date().toISOString()
     }).then(() => {
       updateSyncStatus('synced', 'Synced');
@@ -2265,12 +2269,14 @@ function saveToFirebase() {
     }).catch(error => {
       console.error('Save error:', error);
       updateSyncStatus('error', 'Error');
-      localStorage.setItem('career_chute_backup', JSON.stringify(state));
+      localStorage.setItem('career_chute_backup', JSON.stringify(saveableState));
     });
   } catch (error) {
     console.error('Save error:', error);
     updateSyncStatus('error', 'Error');
-    localStorage.setItem('career_chute_backup', JSON.stringify(state));
+    // Save saveable state to localStorage (without RegExp objects)
+    const { emailParsers, ...saveableState } = state;
+    localStorage.setItem('career_chute_backup', JSON.stringify(saveableState));
   }
 }
 
@@ -7165,11 +7171,11 @@ function extractListingFromContext(linkElement, doc) {
   let depth = 0;
   
   // Walk up the DOM tree to find a substantial container
-  while (container && depth < 5) {
+  while (container && depth < 8) {
     const text = container.textContent || '';
     
-    // Stop if we found a container with enough text (50-500 chars is reasonable for a job listing)
-    if (text.length > 50 && text.length < 1000) {
+    // Stop if we found a container with enough text (30-1500 chars for LinkedIn)
+    if (text.length > 30 && text.length < 1500) {
       break;
     }
     
@@ -7177,52 +7183,79 @@ function extractListingFromContext(linkElement, doc) {
     depth++;
   }
   
-  if (!container) return null;
+  if (!container) {
+    console.log('⚠️  No container found for link');
+    return null;
+  }
   
   const text = container.textContent || '';
   const html = container.innerHTML || '';
   
-  // Extract company name
-  // Usually near "at" or company name is in bold/strong tags
+  // DEBUG: Log first 200 chars to see what we're working with
+  console.log('📝 Container text preview:', text.substring(0, 200).replace(/\s+/g, ' '));
+  
+  // Extract company name - LinkedIn specific patterns
   let company = '';
   const companyPatterns = [
-    /(?:at|@)\s+([A-Z][A-Za-z0-9\s&,.-]+?)(?:\s+in|\s+\||$)/,
-    /<(?:strong|b)>([A-Z][A-Za-z0-9\s&,.-]+?)<\/(?:strong|b)>/,
+    // "Company Name" (in quotes)
+    /"([^"]{3,50})"/,
+    // Company at the start of a line followed by newline
+    /^([A-Z][A-Za-z0-9\s&,.-]{2,50})\s*\n/m,
+    // After "at" or "@"
+    /(?:at|@)\s+([A-Z][A-Za-z0-9\s&,.-]{2,50})(?:\s+in|\s+\||$|•)/i,
+    // In strong/bold tags
+    /<(?:strong|b)>([A-Z][A-Za-z0-9\s&,.-]{2,50})<\/(?:strong|b)>/,
+    // Second line (often company name on LinkedIn)
+    /\n([A-Z][A-Za-z0-9\s&,.-]{2,50})\s*\n/,
+    // Before location (City, STATE pattern)
+    /([A-Z][A-Za-z0-9\s&,.-]{2,50})\s+[A-Z][a-z]+,\s*[A-Z]{2}/,
   ];
   
   for (const pattern of companyPatterns) {
     const match = text.match(pattern) || html.match(pattern);
     if (match && match[1]) {
-      company = match[1].trim();
-      break;
+      const candidate = match[1].trim();
+      // Filter out obvious non-companies
+      if (!/^(view|see|apply|learn|more|details|click)/i.test(candidate)) {
+        company = candidate;
+        console.log('✅ Found company:', company);
+        break;
+      }
     }
   }
   
   // Extract role title
-  // Usually the first line or in a header tag
   let role = '';
-  const roleElement = container.querySelector('h1, h2, h3, h4, strong, b');
-  if (roleElement) {
+  const roleElement = container.querySelector('h1, h2, h3, h4, h5, h6, strong, b');
+  if (roleElement && roleElement.textContent.length > 3 && roleElement.textContent.length < 100) {
     role = roleElement.textContent.trim();
+    console.log('✅ Found role from element:', role);
   } else {
-    // Try first line of text
-    const lines = text.split('\n').filter(l => l.trim().length > 0);
+    // Try first substantial line of text
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3 && l.length < 100);
     if (lines.length > 0) {
-      role = lines[0].trim();
+      // First line is usually the role title
+      role = lines[0];
+      console.log('✅ Found role from first line:', role);
     }
   }
   
   // Extract location
   let location = '';
   const locationPatterns = [
-    /(?:location|located in|in)\s*:?\s*([A-Za-z\s]+,\s*[A-Z]{2})/i,
-    /([A-Za-z\s]+,\s*[A-Z]{2})\s*(?:\||$)/,
+    // City, STATE
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z]{2})(?:\s|$|•|\||·)/,
+    // "Location:" label
+    /(?:location|located in)\s*:?\s*([A-Za-z\s]+,\s*[A-Z]{2})/i,
+    // Remote patterns
+    /(Remote|Anywhere)/i,
   ];
   
   for (const pattern of locationPatterns) {
     const match = text.match(pattern);
     if (match && match[1]) {
       location = match[1].trim();
+      console.log('✅ Found location:', location);
       break;
     }
   }
@@ -7232,9 +7265,10 @@ function extractListingFromContext(linkElement, doc) {
   const salaryMatch = text.match(/\$[\d,]+(?:\.\d{2})?\s*[-–to]+\s*\$?[\d,]+(?:\.\d{2})?(?:\s*(?:per|\/)\s*(?:hour|hr|year|yr|month|mo))?/i);
   if (salaryMatch) {
     salary = salaryMatch[0];
+    console.log('✅ Found salary:', salary);
   }
   
-  return {
+  const result = {
     company,
     role,
     location,
@@ -7242,6 +7276,10 @@ function extractListingFromContext(linkElement, doc) {
     url: '', // Will be set by caller
     rawContext: text.substring(0, 300), // Keep first 300 chars for debugging
   };
+  
+  console.log('📦 Extracted:', { company: company || 'MISSING', role: role || 'MISSING', location, salary });
+  
+  return result;
 }
 
 // ============================================
