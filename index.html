@@ -1256,16 +1256,16 @@ progress::-webkit-progress-value {
   
   <!-- Job Queue Controls -->
   <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-    <button class="modern-button primary" onclick="scanJobAlerts()">
+    <button class="modern-button primary" onclick="scanJobAlerts()" title="Scan Gmail for new job postings">
       📧 Scan Gmail for Jobs
     </button>
-    <button class="modern-button secondary" onclick="addJobManually()">
+    <button class="modern-button secondary" onclick="addJobManually()" title="Manually add a job to the queue">
       ➕ Add Job Manually
     </button>
-    <button class="modern-button secondary" onclick="exportJobQueue()">
-      📊 Export to Spreadsheet
+    <button class="modern-button secondary" onclick="addSelectedToPipeline()" title="Add selected jobs to your Applications Pipeline">
+      📋 Add to Pipeline
     </button>
-    <button class="modern-button secondary" onclick="openJobPrioritizationSettings()">
+    <button class="modern-button secondary" onclick="openJobPrioritizationSettings()" title="Configure job scoring and prioritization">
       ⚙️ Prioritization Rules
     </button>
   </div>
@@ -1338,30 +1338,30 @@ progress::-webkit-progress-value {
   </div>
   
   <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line);">
-    <h3 style="margin-bottom: 8px; font-size: 18px;">Guardrails</h3>
-    <p style="color: var(--muted); font-size: 13px; margin-bottom: 12px;">Keep you on track and prevent optimization paralysis</p>
-    
-    <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+    <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
       <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin: 0;">
-        <span style="font-size: 16px; color: var(--text);">Enable Guardrails</span>
+        <div>
+          <span style="font-size: 14px; color: var(--text); font-weight: 600;">Enable Guardrails</span>
+          <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 2px;">Prevent optimization paralysis</span>
+        </div>
         <input type="checkbox" id="guardrailsEnabled" onchange="toggleGuardrails()" style="width: auto; height: 24px; cursor: pointer;">
       </label>
     </div>
     
-    <div id="guardrailsSettings" style="display: none; margin-left: 20px;">
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; align-items: end;">
+    <div id="guardrailsSettings" style="display: none;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
         <div class="form-group" style="margin-bottom: 0;">
-          <label style="font-size: 12px; margin-bottom: 4px;">Max tailoring time (min)</label>
+          <label style="font-size: 11px; margin-bottom: 4px;">Max tailoring time (min)</label>
           <input type="number" id="maxTailorTime" min="15" max="120" value="40" style="height: 32px;">
         </div>
         
         <div class="form-group" style="margin-bottom: 0;">
-          <label style="font-size: 12px; margin-bottom: 4px;">Max daily optimization (min)</label>
+          <label style="font-size: 11px; margin-bottom: 4px;">Max daily optimization (min)</label>
           <input type="number" id="maxOptimizationTime" min="30" max="180" value="60" style="height: 32px;">
         </div>
         
         <div class="form-group" style="margin-bottom: 0;">
-          <label style="font-size: 12px; margin-bottom: 4px;">Warning threshold (min)</label>
+          <label style="font-size: 11px; margin-bottom: 4px;">Warning threshold (min)</label>
           <input type="number" id="warningThreshold" min="10" max="60" value="30" style="height: 32px;">
         </div>
       </div>
@@ -1412,18 +1412,13 @@ progress::-webkit-progress-value {
     
     <div style="background: var(--panel); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
       <div class="form-group" style="margin-bottom: 12px;">
-        <label style="font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block;">Google Client ID</label>
         <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
-          <button class="modern-button secondary" onclick="loadOAuthConfig('netlify')" style="height: 32px; padding: 0 12px; font-size: 12px;">Netlify</button>
-          <button class="modern-button secondary" onclick="loadOAuthConfig('localhost')" style="height: 32px; padding: 0 12px; font-size: 12px;">Localhost</button>
-          <button class="modern-button secondary" onclick="saveOAuthConfig()" style="height: 32px; padding: 0 12px; font-size: 12px;">Save Current</button>
-          <button class="modern-button secondary" onclick="testOAuthConfig()" style="height: 32px; padding: 0 12px; font-size: 12px;">Test Config</button>
-          <button class="modern-button secondary" onclick="resetGmailAPI()" style="height: 32px; padding: 0 12px; font-size: 12px;">Reset API</button>
+          <button class="modern-button secondary" onclick="loadOAuthConfig('netlify')" title="Configure OAuth for Netlify deployment" style="height: 32px; padding: 0 12px; font-size: 12px;">Netlify</button>
+          <button class="modern-button secondary" onclick="loadOAuthConfig('localhost')" title="Configure OAuth for local testing" style="height: 32px; padding: 0 12px; font-size: 12px;">Localhost</button>
+          <button class="modern-button secondary" onclick="testOAuthConfig()" title="Check your OAuth configuration" style="height: 32px; padding: 0 12px; font-size: 12px;">Test Config</button>
+          <button class="modern-button secondary" onclick="resetGmailAPI()" title="Reset Gmail connection and clear errors" style="height: 32px; padding: 0 12px; font-size: 12px;">Reset API</button>
         </div>
-        <input type="text" id="gmailClientId" placeholder="Your Google OAuth Client ID" oninput="handleGmailClientIdChange(this.value)" style="width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
-        <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
-          Get from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--accent);">Google Cloud Console</a>
-        </div>
+        <input type="text" id="gmailClientId" placeholder="Your Google OAuth Client ID" oninput="handleGmailClientIdChange(this.value)" style="display: none; width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);">
       </div>
       
       <div id="gmailConnectionStatus" style="margin-bottom: 12px;">
@@ -1432,9 +1427,9 @@ progress::-webkit-progress-value {
       </div>
       
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button id="connectGmailBtn" onclick="connectGmail()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Connect Gmail</button>
-        <button id="disconnectGmailBtn" onclick="disconnectGmail()" class="modern-button secondary" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Disconnect</button>
-        <button id="scanEmailsBtn" onclick="scanJobAlerts()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Scan for Jobs Now</button>
+        <button id="connectGmailBtn" onclick="connectGmail()" class="modern-button primary" title="Authorize access to scan your Gmail for job postings" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Connect Gmail</button>
+        <button id="disconnectGmailBtn" onclick="disconnectGmail()" class="modern-button secondary" title="Revoke Gmail access and disconnect" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Disconnect</button>
+        <button id="scanEmailsBtn" onclick="scanJobAlerts()" class="modern-button primary" title="Scan Gmail for new job postings from LinkedIn and Indeed" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Scan for Jobs Now</button>
       </div>
       
       <div id="gmailLastScan" style="margin-top: 12px;"></div>
@@ -3826,13 +3821,16 @@ function renderProgress() {
     eventsStatusEl.innerHTML = `${numerator}/<span style=\"color:${anyEventThisWeek ? 'var(--ok)' : 'var(--bad)'}\">${denom}</span>`;
   }
   
-  // History list
+  // History list - only show finished applications (sent, interview, offer, rejected)
   const historyEl = document.getElementById('applicationHistory');
   if (historyEl) {
-    if (state.applications.length === 0) {
-      historyEl.innerHTML = '<p style=\"color: var(--muted); text-align: center;\">No applications yet</p>';
+    const finishedStatuses = ['sent', 'interview', 'offer', 'rejected'];
+    const finishedApps = state.applications.filter(app => finishedStatuses.includes(app.status));
+    
+    if (finishedApps.length === 0) {
+      historyEl.innerHTML = '<p style=\"color: var(--muted); text-align: center;\">No finished applications yet</p>';
     } else {
-      historyEl.innerHTML = state.applications.map(app => {
+      historyEl.innerHTML = finishedApps.map(app => {
         let totalTime = 0;
         Object.values(state.dailyTasks).forEach(dayTasks => {
           dayTasks.forEach(t => {
@@ -3841,10 +3839,18 @@ function renderProgress() {
             }
           });
         });
+        
+        const statusEmoji = {
+          'sent': '📤',
+          'interview': '🎯',
+          'offer': '🎉',
+          'rejected': '❌'
+        }[app.status] || '📋';
+        
         return `
           <div class=\"list-item\">
             <div>
-              <div style=\"font-weight: 600; margin-bottom: 4px;\">${app.company} - ${app.role}</div>
+              <div style=\"font-weight: 600; margin-bottom: 4px;\">${statusEmoji} ${app.company} - ${app.role}</div>
               <div style=\"font-size: 14px; color: var(--muted);\">${totalTime > 0 ? `${totalTime} min invested` : 'Not started'} • ${app.status}</div>
             </div>
           </div>
@@ -5535,9 +5541,39 @@ function addJobManually() {
   alert('Manual job addition will be implemented next!');
 }
 
-function exportJobQueue() {
-  // Export to CSV or Google Sheets
-  alert('Export functionality will be implemented next!');
+function addSelectedToPipeline() {
+  const selectedJobs = Array.from(document.querySelectorAll('#jobQueueRows input[type="checkbox"]:checked'))
+    .map(checkbox => checkbox.closest('div[style*="grid-template-columns"]'))
+    .map(row => {
+      // Extract job ID from the row's buttons
+      const editBtn = row.querySelector('button[onclick*="editJob"]');
+      if (editBtn) {
+        const match = editBtn.getAttribute('onclick').match(/editJob\('([^']+)'\)/);
+        return match ? match[1] : null;
+      }
+      return null;
+    })
+    .filter(id => id !== null);
+  
+  if (selectedJobs.length === 0) {
+    alert('Please select at least one job to add to your pipeline');
+    return;
+  }
+  
+  // Move selected jobs to pipeline
+  selectedJobs.forEach(jobId => {
+    const job = state.applications.find(app => app.id === jobId);
+    if (job && job.status === 'queued') {
+      job.status = 'pipeline';
+      job.addedToPipeline = new Date().toISOString();
+    }
+  });
+  
+  saveToFirebase();
+  renderJobQueue();
+  renderPlanScreen();
+  
+  alert(`${selectedJobs.length} job(s) added to your Applications Pipeline!`);
 }
 
 function openJobPrioritizationSettings() {
