@@ -14,6 +14,9 @@ A modern, flow-state job search application designed to streamline your career a
 
 ### **Advanced Features**
 - **Smart Duplicate Detection** - Prevents duplicate applications and tasks
+- **Job Prioritization System** - Grade and filter jobs by fit (A, B, C, ungraded)
+- **Bulk Selection Tools** - Select jobs by grade, color, or status
+- **Google Sheets Integration** - Sync job data to spreadsheets automatically
 - **Guardrails System** - Time limits and warnings to maintain healthy work habits
 - **Offline Support** - Continue working even without internet connection
 - **Data Export/Import** - Backup and restore your data across devices
@@ -22,8 +25,11 @@ A modern, flow-state job search application designed to streamline your career a
 ### **Gmail Integration**
 - **OAuth 2.0 Security** - Secure connection to your Gmail account
 - **Automatic Email Scanning** - Find job-related emails and create tasks
-- **Smart Parsing** - Extract company names, job titles, and deadlines
+- **Smart Parsing** - Extract company names, job titles, locations, and salaries
+- **Multi-Source Support** - LinkedIn, Indeed, Glassdoor, ZipRecruiter, and more
 - **Duplicate Prevention** - Avoid processing the same email multiple times
+- **Employer Blocking** - Block unwanted companies from future scans
+- **Source Tracking** - See which job board each opportunity came from
 
 ## 🛠️ Tech Stack
 
@@ -98,8 +104,18 @@ To enable Gmail integration for automatic job email scanning:
 ### **Gmail Integration**
 1. **Connect Gmail** - Authorize access to your Gmail account
 2. **Scan emails** - Click "Scan for Jobs Now" to find job-related emails
-3. **Review tasks** - Check the automatically created tasks and add details
-4. **Stay organized** - Duplicate detection prevents processing the same email twice
+3. **Review jobs** - Check the job queue with source tracking and color coding
+4. **Grade jobs** - Click role titles to cycle through A/B/C grades
+5. **Block employers** - Use the × button to block unwanted companies
+6. **Bulk select** - Use the dropdown to select jobs by grade or status
+7. **Add to pipeline** - Move selected jobs to your applications pipeline
+
+### **Job Prioritization System**
+1. **Grade jobs** - Click role titles to cycle through A (green), B (orange), C (red), or ungraded (gray)
+2. **Bulk selection** - Use the dropdown to select all jobs of a specific grade
+3. **Filter by grade** - Red (C) jobs are automatically skipped in future scans
+4. **Visual organization** - Color-coded job queue for quick identification
+5. **Source tracking** - See which job board each opportunity came from
 
 ### **Cross-Device Sync**
 1. **Use the same User ID** - Enter your User ID on all devices
