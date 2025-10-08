@@ -1653,6 +1653,10 @@ progress::-webkit-progress-value {
       <input type="text" id="newContactCompany">
     </div>
     <div class="form-group">
+      <label>LinkedIn Profile (optional)</label>
+      <input type="url" id="newContactLinkedIn" placeholder="https://linkedin.com/in/username">
+    </div>
+    <div class="form-group">
       <label>Notes</label>
       <textarea id="newContactNotes" rows="3" placeholder="What to discuss, how they can help..."></textarea>
     </div>
@@ -4577,6 +4581,7 @@ function showAddContactModal() {
   document.getElementById('newContactName').value = '';
   document.getElementById('newContactRel').value = 'Friend/Ally';
   document.getElementById('newContactCompany').value = '';
+  document.getElementById('newContactLinkedIn').value = '';
   document.getElementById('newContactNotes').value = '';
   
   document.getElementById('addContactModal').classList.add('active');
@@ -4985,6 +4990,7 @@ function addContact() {
   const name = document.getElementById('newContactName').value.trim();
   const relationship = document.getElementById('newContactRel').value;
   const company = document.getElementById('newContactCompany').value.trim();
+  const linkedin = document.getElementById('newContactLinkedIn').value.trim();
   const notes = document.getElementById('newContactNotes').value.trim();
   
   if (!name) {
@@ -4997,16 +5003,25 @@ function addContact() {
     name: name,
     relationship: relationship,
     company: company,
-    notes: notes
+    linkedin: linkedin,
+    notes: notes,
+    lastContact: null,
+    addedDate: getTodayISO()
   };
   
   state.contacts.push(contact);
   saveToFirebase();
   
+  // Auto-sync to Google Sheets if enabled
+  if (state.sheets.enabled && state.sheets.autoSync) {
+    syncContactsToGoogleSheets().catch(err => console.warn('Auto-sync contacts failed:', err));
+  }
+  
   // Clear form
   document.getElementById('newContactName').value = '';
   document.getElementById('newContactRel').value = 'Friend/Ally';
   document.getElementById('newContactCompany').value = '';
+  document.getElementById('newContactLinkedIn').value = '';
   document.getElementById('newContactNotes').value = '';
   
   closeModal('addContactModal');
@@ -5242,8 +5257,13 @@ function initGoogleAPI() {
             'https://sheets.googleapis.com/$discovery/rest?version=v4'
           ]
         });
+        
+        // Load Gmail and Sheets APIs
+        await gapi.client.load('gmail', 'v1');
+        await gapi.client.load('sheets', 'v4');
+        
         gapiInited = true;
-        console.log('GAPI client initialized');
+        console.log('GAPI client initialized with Gmail and Sheets APIs');
         resolve();
       } catch (error) {
         console.error('GAPI initialization failed:', error);
@@ -5279,14 +5299,32 @@ function initGIS() {
       state.gmail.accessToken = response.access_token;
       state.gmail.tokenExpiry = Date.now() + (response.expires_in * 1000);
       
+      // Set the token for API calls
+      gapi.client.setToken({
+        access_token: response.access_token
+      });
+      
       // Get user email
-      gapi.client.gmail.users.getProfile({ userId: 'me' }).then(profile => {
-        state.gmail.userEmail = profile.result.emailAddress;
+      if (gapi.client.gmail) {
+        gapi.client.gmail.users.getProfile({ userId: 'me' }).then(profile => {
+          state.gmail.userEmail = profile.result.emailAddress;
+          updateGmailUI();
+          saveToFirebase();
+          console.log('Gmail connected successfully');
+          alert(`Gmail connected as ${state.gmail.userEmail}`);
+        }).catch(error => {
+          console.error('Error getting profile:', error);
+          // Still mark as connected even if profile fails
+          updateGmailUI();
+          saveToFirebase();
+          alert('Gmail connected successfully!');
+        });
+      } else {
+        // API not loaded yet, just save the connection
         updateGmailUI();
         saveToFirebase();
-        console.log('Gmail connected successfully');
-        alert(`Gmail connected as ${state.gmail.userEmail}`);
-      });
+        alert('Gmail connected! Please wait a moment for APIs to load.');
+      }
     },
   });
   
@@ -5696,6 +5734,90 @@ async function syncToGoogleSheets() {
   }
 }
 
+async function syncContactsToGoogleSheets() {
+  if (!state.gmail.connected) {
+    return;
+  }
+  
+  try {
+    // Initialize spreadsheet if needed
+    if (!state.sheets.spreadsheetId) {
+      await initializeSpreadsheet();
+    }
+    
+    // Create Contacts sheet if it doesn't exist
+    const spreadsheet = await gapi.client.sheets.spreadsheets.get({
+      spreadsheetId: state.sheets.spreadsheetId
+    });
+    
+    const hasContactsSheet = spreadsheet.result.sheets.some(s => s.properties.title === 'Networking Contacts');
+    
+    if (!hasContactsSheet) {
+      // Add Contacts sheet
+      await gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: state.sheets.spreadsheetId,
+        resource: {
+          requests: [{
+            addSheet: {
+              properties: {
+                title: 'Networking Contacts',
+                gridProperties: {
+                  frozenRowCount: 1
+                }
+              }
+            }
+          }]
+        }
+      });
+      
+      // Add header row
+      await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: state.sheets.spreadsheetId,
+        range: 'Networking Contacts!A1:G1',
+        valueInputOption: 'RAW',
+        resource: {
+          values: [[
+            'Name',
+            'Relationship',
+            'Company',
+            'LinkedIn Profile',
+            'Last Contact',
+            'Added Date',
+            'Notes'
+          ]]
+        }
+      });
+    }
+    
+    // Prepare contact rows
+    const rows = state.contacts.map(contact => [
+      contact.name || '',
+      contact.relationship || '',
+      contact.company || '',
+      contact.linkedin || '',
+      contact.lastContact || '',
+      contact.addedDate || '',
+      contact.notes || ''
+    ]);
+    
+    if (rows.length > 0) {
+      // Update spreadsheet
+      await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: state.sheets.spreadsheetId,
+        range: 'Networking Contacts!A2:G' + (rows.length + 1),
+        valueInputOption: 'RAW',
+        resource: {
+          values: rows
+        }
+      });
+    }
+    
+    console.log('Synced', rows.length, 'contacts to Google Sheets');
+  } catch (error) {
+    console.error('Error syncing contacts to Google Sheets:', error);
+  }
+}
+
 function openSpreadsheet() {
   if (state.sheets.spreadsheetUrl) {
     window.open(state.sheets.spreadsheetUrl, '_blank');
@@ -5733,8 +5855,8 @@ async function scanJobAlerts() {
   }
   
   // Make sure Gmail API is loaded
-  if (!gapi.client.gmail) {
-    alert('Gmail API not ready. Please refresh the page and try again.');
+  if (!gapi || !gapi.client || !gapi.client.gmail) {
+    alert('Gmail API not ready. Please:\n1. Disconnect and reconnect Gmail\n2. Wait a moment after connecting\n3. Try scanning again');
     return;
   }
   
