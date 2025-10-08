@@ -5589,7 +5589,9 @@ function renderJobRow(job) {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 100%;
+            max-width: 120px;
+            height: 20px;
+            display: inline-block;
           "
           onmouseover="this.style.opacity='0.8'"
           onmouseout="this.style.opacity='1'"
@@ -6471,6 +6473,12 @@ function renderPrioritizationSettings() {
                 font-size: 10px; 
                 cursor: pointer;
                 transition: opacity 0.2s;
+                max-width: 120px;
+                height: 20px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: inline-block;
               "
               onmouseover="this.style.opacity='0.8'"
               onmouseout="this.style.opacity='1'"
