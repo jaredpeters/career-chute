@@ -1955,6 +1955,10 @@ let state = {
   cityGrades: {
     // Cities mapped to grades: 'A', 'B', 'C', or 'ungraded' (gray)
     // Example: 'Los Angeles': 'A', 'Santa Monica': 'A', 'Beverly Hills': 'B'
+  },
+  blockedCities: {
+    // Cities that should be completely blocked from future imports
+    // Example: 'New York': true, 'Chicago': true
   }
 };
 
@@ -5632,18 +5636,20 @@ function renderJobRow(job) {
               background: #6b7280; 
               color: white; 
               border: none; 
-              width: 14px; 
-              height: 14px; 
+              width: 12px; 
+              height: 12px; 
               border-radius: 50%; 
               font-size: 8px; 
               cursor: pointer;
-              display: flex;
+              display: inline-flex;
               align-items: center;
               justify-content: center;
               flex-shrink: 0;
               padding: 0;
               margin: 0;
               line-height: 1;
+              min-width: 12px;
+              max-width: 12px;
             "
             title="Block this employer (never see jobs from them again)"
           >×</button>
@@ -5677,43 +5683,68 @@ function renderJobRow(job) {
       <div style="text-align: center; color: var(--muted); font-size: 12px;">
         ${job.salary || 'N/A'}
       </div>
-      <div style="text-align: center;">
-        ${job.location ? (() => {
-          const city = job.location.split(',')[0].trim();
-          const grade = state.cityGrades[city] || 'ungraded';
-          const gradeColors = {
-            'A': { bg: '#16a34a', text: 'white' },
-            'B': { bg: '#ea580c', text: 'white' },
-            'C': { bg: '#dc2626', text: 'white' },
-            'ungraded': { bg: '#6b7280', text: 'white' }
-          };
-          const color = gradeColors[grade];
-          
-          return `<button 
-            onclick="cycleCityGrade('${city.replace(/'/g, "\\'")}')" 
-            data-city="${city}"
-            style="
-              background: ${color.bg}; 
-              color: ${color.text}; 
-              border: none; 
-              padding: 3px 8px; 
-              border-radius: 4px; 
-              font-size: 10px; 
-              cursor: pointer;
-              transition: opacity 0.2s;
-              white-space: normal;
-              word-wrap: break-word;
-              height: auto;
-              min-height: 20px;
-              display: inline-block;
-              text-align: center;
-            "
-            onmouseover="this.style.opacity='0.8'"
-            onmouseout="this.style.opacity='1'"
-            title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
-          >${city}</button>`;
-        })() : 'N/A'}
-      </div>
+            <div style="text-align: center;">
+              ${job.location ? (() => {
+                const city = job.location.split(',')[0].trim();
+                const grade = state.cityGrades[city] || 'ungraded';
+                const gradeColors = {
+                  'A': { bg: '#16a34a', text: 'white' },
+                  'B': { bg: '#ea580c', text: 'white' },
+                  'C': { bg: '#dc2626', text: 'white' },
+                  'ungraded': { bg: '#6b7280', text: 'white' }
+                };
+                const color = gradeColors[grade];
+                
+                return `<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
+                  <button 
+                    onclick="cycleCityGrade('${city.replace(/'/g, "\\'")}')" 
+                    data-city="${city}"
+                    style="
+                      background: ${color.bg}; 
+                      color: ${color.text}; 
+                      border: none; 
+                      padding: 3px 8px; 
+                      border-radius: 4px; 
+                      font-size: 10px; 
+                      cursor: pointer;
+                      transition: opacity 0.2s;
+                      white-space: normal;
+                      word-wrap: break-word;
+                      height: auto;
+                      min-height: 20px;
+                      display: inline-block;
+                      text-align: center;
+                    "
+                    onmouseover="this.style.opacity='0.8'"
+                    onmouseout="this.style.opacity='1'"
+                    title="Click to cycle grade: ${grade === 'ungraded' ? 'Not graded' : 'Grade ' + grade}"
+                  >${city}</button>
+                  <button 
+                    onclick="blockCity('${city.replace(/'/g, "\\'")}')" 
+                    style="
+                      background: #dc2626; 
+                      color: white; 
+                      border: none; 
+                      width: 12px; 
+                      height: 12px; 
+                      border-radius: 50%; 
+                      font-size: 8px; 
+                      cursor: pointer;
+                      display: inline-flex;
+                      align-items: center;
+                      justify-content: center;
+                      flex-shrink: 0;
+                      padding: 0;
+                      margin: 0;
+                      line-height: 1;
+                      min-width: 12px;
+                      max-width: 12px;
+                    "
+                    title="Block this city (never see jobs from here again)"
+                  >×</button>
+                </div>`;
+              })() : 'N/A'}
+            </div>
       <div style="text-align: center;">
         <span style="background: ${statusColor}; color: white; padding: 3px 6px; border-radius: 10px; font-size: 10px;">
           ${job.status}
@@ -6189,9 +6220,11 @@ async function scanJobAlerts() {
           if (jobData.location) {
             const city = jobData.location.split(',')[0].trim();
             const cityGrade = state.cityGrades[city];
+            const isBlocked = state.blockedCities && state.blockedCities[city];
             
-            if (cityGrade === 'C') {
-              console.log('Skipping Grade C city job:', jobData.company, '-', jobData.role, 'in', city);
+            if (cityGrade === 'C' || isBlocked) {
+              console.log('Skipping city job:', jobData.company, '-', jobData.role, 'in', city, 
+                         cityGrade === 'C' ? '(Grade C)' : '(Blocked)');
               skippedCount++;
               continue;
             }
@@ -6509,15 +6542,25 @@ function parseGenericJob(subject, body, from) {
   let role = '';
   let location = '';
   
-  // Try to extract from subject line
-  // Pattern 1: "Company for Role. Apply Now."
-  let match = subject.match(/(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i);
-  if (match) {
-    company = match[1].trim();
-    role = match[2].trim();
-  } else {
-    // Pattern 2: "Company1, Company2 in Location. Apply Now."
-    match = subject.match(/(.+?)\s+in\s+(.+?)\.\s*Apply\s+Now/i);
+  // Determine source from email domain first
+  let source = 'Unknown';
+  if (from.includes('linkedin.com')) source = 'LinkedIn';
+  else if (from.includes('indeed.com')) source = 'Indeed';
+  else if (from.includes('glassdoor.com')) source = 'Glassdoor';
+  else if (from.includes('ziprecruiter.com')) source = 'ZipRecruiter';
+  else if (from.includes('angel.co')) source = 'AngelList';
+  else if (from.includes('remote.co')) source = 'Remote.co';
+  else if (from.includes('weworkremotely.com')) source = 'WeWorkRemotely';
+  else {
+    // Extract domain from email
+    const domainMatch = from.match(/@(.+)/);
+    source = domainMatch ? domainMatch[1] : 'Unknown';
+  }
+  
+  // Handle different email formats based on source
+  if (source === 'Glassdoor') {
+    // Glassdoor format: "Company1, Company2 in Location. Apply Now."
+    let match = subject.match(/(.+?)\s+in\s+(.+?)\.\s*Apply\s+Now/i);
     if (match) {
       // Split companies if there are multiple
       const companies = match[1].split(',').map(c => c.trim());
@@ -6525,28 +6568,78 @@ function parseGenericJob(subject, body, from) {
       location = match[2].trim();
       role = 'Various Roles'; // Generic role for multi-company listings
     } else {
-      // Pattern 3: "Company is hiring: Role"
-      match = subject.match(/(.+?)\s+is\s+hiring[:\s]+(.+)/i);
+      // Glassdoor format: "Company for Role. Apply Now."
+      match = subject.match(/(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i);
       if (match) {
         company = match[1].trim();
         role = match[2].trim();
       } else {
-        // Pattern 4: Check if subject contains location pattern that got misassigned
-        const locationPattern = /in\s+([A-Z][a-z\s,]+(?:,\s*[A-Z]{2})?)\s*\.\s*Apply\s+Now/i;
-        const locationMatch = subject.match(locationPattern);
-        if (locationMatch) {
-          // This looks like a location was assigned as role, try to extract company
-          const beforeLocation = subject.replace(locationPattern, '').trim();
-          const companies = beforeLocation.split(',').map(c => c.trim());
-          company = companies[0] || 'Unknown';
-          role = 'Various Roles';
-          location = locationMatch[1].trim();
-        } else {
-          // Fallback: use subject as role, try to extract company from body
-          role = subject;
-          const companyMatch = body.match(/company[:\s]+([^<\n]+)/i);
-          company = companyMatch ? companyMatch[1].trim() : 'Unknown';
-        }
+        // Fallback for Glassdoor
+        company = 'Unknown';
+        role = subject;
+      }
+    }
+  } else if (source === 'ZipRecruiter') {
+    // ZipRecruiter format: "Jared, I think this job might be right for you!" or "💼 Jared, Company. has an open position"
+    if (subject.includes('I think this job might be right for you')) {
+      // This is a generic subject, try to extract from body
+      company = 'Unknown';
+      role = 'Various Roles';
+    } else if (subject.includes('has an open position')) {
+      // Extract company from "Company. has an open position"
+      const match = subject.match(/(.+?)\.\s+has\s+an\s+open\s+position/i);
+      if (match) {
+        company = match[1].trim();
+        role = 'Various Roles';
+      } else {
+        company = 'Unknown';
+        role = subject;
+      }
+    } else {
+      // Try other patterns
+      const match = subject.match(/(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i);
+      if (match) {
+        company = match[1].trim();
+        role = match[2].trim();
+      } else {
+        company = 'Unknown';
+        role = subject;
+      }
+    }
+  } else if (source === 'Indeed') {
+    // Indeed format: "Role at Company in Location and X more new jobs"
+    let match = subject.match(/(.+?)\s+at\s+(.+?)\s+in\s+(.+?)(?:\s+and\s+\d+\s+more|$)/i);
+    if (match) {
+      role = match[1].trim();
+      company = match[2].trim();
+      location = match[3].trim();
+    } else {
+      // Indeed format: "Role @ Company"
+      match = subject.match(/(.+?)\s+@\s+(.+)/);
+      if (match) {
+        role = match[1].trim();
+        company = match[2].trim();
+      } else {
+        company = 'Unknown';
+        role = subject;
+      }
+    }
+  } else {
+    // Generic fallback
+    let match = subject.match(/(.+?)\s+for\s+(.+?)\.\s*Apply\s+Now/i);
+    if (match) {
+      company = match[1].trim();
+      role = match[2].trim();
+    } else {
+      match = subject.match(/(.+?)\s+in\s+(.+?)\.\s*Apply\s+Now/i);
+      if (match) {
+        const companies = match[1].split(',').map(c => c.trim());
+        company = companies[0];
+        location = match[2].trim();
+        role = 'Various Roles';
+      } else {
+        company = 'Unknown';
+        role = subject;
       }
     }
   }
@@ -6565,21 +6658,6 @@ function parseGenericJob(subject, body, from) {
   // Try to extract URL
   const urlMatch = body.match(/https?:\/\/[^\s"<]+/);
   const url = urlMatch ? urlMatch[0] : '';
-  
-  // Determine source from email domain
-  let source = 'Unknown';
-  if (from.includes('linkedin.com')) source = 'LinkedIn';
-  else if (from.includes('indeed.com')) source = 'Indeed';
-  else if (from.includes('glassdoor.com')) source = 'Glassdoor';
-  else if (from.includes('ziprecruiter.com')) source = 'ZipRecruiter';
-  else if (from.includes('angel.co')) source = 'AngelList';
-  else if (from.includes('remote.co')) source = 'Remote.co';
-  else if (from.includes('weworkremotely.com')) source = 'WeWorkRemotely';
-  else {
-    // Extract domain from email
-    const domainMatch = from.match(/@(.+)/);
-    source = domainMatch ? domainMatch[1] : 'Unknown';
-  }
   
   return {
     company,
@@ -6615,6 +6693,36 @@ function blockEmployer(companyName) {
   }
   
   alert(`Blocked "${companyName}"!\n\nRemoved ${removedCount} existing job(s) from this employer.\n\nFuture Gmail scans will skip jobs from this company.`);
+}
+
+function blockCity(cityName) {
+  if (!confirm(`Are you sure you want to block "${cityName}" and never see jobs from this city again?`)) {
+    return;
+  }
+  
+  // Add to blocked cities list
+  state.blockedCities = state.blockedCities || {};
+  state.blockedCities[cityName] = true;
+  
+  // Remove all existing jobs from this city
+  const initialCount = state.applications.length;
+  state.applications = state.applications.filter(app => {
+    if (!app.location) return true;
+    const city = app.location.split(',')[0].trim();
+    return city !== cityName;
+  });
+  const removedCount = initialCount - state.applications.length;
+  
+  saveToFirebase();
+  renderJobQueue();
+  renderPlanScreen();
+  
+  // Auto-sync to Google Sheets if enabled
+  if (state.sheets.enabled && state.sheets.autoSync) {
+    syncToGoogleSheets().catch(err => console.warn('Auto-sync failed:', err));
+  }
+  
+  alert(`Blocked "${cityName}"!\n\nRemoved ${removedCount} existing job(s) from this city.\n\nFuture Gmail scans will skip jobs from this city.`);
 }
 
 function handleBulkSelection(grade) {
