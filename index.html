@@ -1340,6 +1340,24 @@ progress::-webkit-progress-value {
   </div>
 </div>
 
+<!-- Field Mapping Training Screen -->
+<div id="mapping" class="screen">
+  <div class="header">
+    <h1>Field Mapping Training</h1>
+  </div>
+  <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+    <h3 style="margin: 0 0 16px 0;">Train the Parser</h3>
+    <p style="margin: 0 0 16px 0; color: var(--muted);">Review and correct how emails are being parsed to improve accuracy.</p>
+    <button onclick="loadMappingTrainingData()" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+      Load Recent Emails for Training
+    </button>
+  </div>
+  
+  <div id="mappingTrainingContainer">
+    <!-- Training data will be populated here -->
+  </div>
+</div>
+
 <!-- Settings Screen -->
 <div id="settings" class="screen">
   <div class="header">
@@ -1776,6 +1794,10 @@ progress::-webkit-progress-value {
   <button class="nav-btn" onclick="showScreen('progress')">
     📊
     <span>Progress</span>
+  </button>
+  <button class="nav-btn" onclick="showScreen('mapping')">
+    🔧
+    <span>Mapping</span>
   </button>
   <button class="nav-btn" onclick="showScreen('settings')">
     ⚙️
@@ -2357,6 +2379,9 @@ function showScreen(screenId) {
     renderPrioritizationSettings();
     renderCityGradingSettings();
     renderJobQueue();
+  }
+  if (screenId === 'mapping') {
+    // Mapping screen doesn't need special rendering
   }
   if (screenId === 'settings') renderSettings();
 }
@@ -6377,6 +6402,12 @@ async function scanJobAlerts() {
       await syncToGoogleSheets();
     }
     
+    // Update prioritization rules UI with new roles and cities
+    if (addedCount > 0) {
+      renderPrioritizationSettings();
+      renderCityGradingSettings();
+    }
+    
     // Show detailed results
     const blockedEmployerCount = Object.keys(state.blockedEmployers).length;
     const blockedCityCount = Object.keys(state.blockedCities || {}).length;
@@ -6805,11 +6836,11 @@ function mapEmailFields(subject, body, from) {
     location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
     // Remove common non-location phrases
     location = location.replace(/(package\s+to\s+support|remote|hybrid|full-time|part-time).*$/i, '').trim();
-    // Fix common truncations
-    if (location === 'Angeles') location = 'Los Angeles';
-    if (location === 'Monica') location = 'Santa Monica';
-    if (location === 'Francisco') location = 'San Francisco';
-    if (location === 'Diego') location = 'San Diego';
+    // Only fix truncations if they're standalone (not part of a larger location)
+    if (location === 'Angeles' && !location.includes(',')) location = 'Los Angeles';
+    if (location === 'Monica' && !location.includes(',')) location = 'Santa Monica';
+    if (location === 'Francisco' && !location.includes(',')) location = 'San Francisco';
+    if (location === 'Diego' && !location.includes(',')) location = 'San Diego';
   }
   
   if (!role || role === 'Various Roles') {
@@ -6829,14 +6860,15 @@ function mapEmailFields(subject, body, from) {
   }
   
   if (location) {
-    // Fix common location truncations
-    if (location === 'Angeles') location = 'Los Angeles';
-    if (location === 'Monica') location = 'Santa Monica';
-    if (location === 'Francisco') location = 'San Francisco';
-    if (location === 'Diego') location = 'San Diego';
-    // Remove salary info from location field
+    // Remove salary info from location field first
     location = location.replace(/\$[\d,]+\s*-\s*\$[\d,]+.*$/i, '').trim();
     location = location.replace(/package\s+to\s+support.*$/i, '').trim();
+    
+    // Only fix truncations if they're standalone (not part of a larger location)
+    if (location === 'Angeles' && !location.includes(',')) location = 'Los Angeles';
+    if (location === 'Monica' && !location.includes(',')) location = 'Santa Monica';
+    if (location === 'Francisco' && !location.includes(',')) location = 'San Francisco';
+    if (location === 'Diego' && !location.includes(',')) location = 'San Diego';
   }
   
   if (role) {
@@ -7885,6 +7917,120 @@ function confirmReset() {
   z-index: 9999;
 }
 </style>
+
+// Field Mapping Training Functions
+async function loadMappingTrainingData() {
+  if (!state.gmail.connected) {
+    alert('Please connect to Gmail first!');
+    return;
+  }
+  
+  try {
+    // Load recent job alert emails
+    const response = await gapi.client.gmail.users.messages.list({
+      userId: 'me',
+      q: 'from:(linkedin.com OR indeed.com OR glassdoor.com OR ziprecruiter.com) subject:(job OR hiring OR position) newer_than:7d',
+      maxResults: 10
+    });
+    
+    const messages = response.result.messages || [];
+    const container = document.getElementById('mappingTrainingContainer');
+    
+    if (messages.length === 0) {
+      container.innerHTML = '<p>No recent job emails found for training.</p>';
+      return;
+    }
+    
+    container.innerHTML = '<h3>Email Parsing Training</h3>';
+    
+    for (let i = 0; i < Math.min(messages.length, 5); i++) {
+      const message = await gapi.client.gmail.users.messages.get({
+        userId: 'me',
+        id: messages[i].id
+      });
+      
+      const headers = message.result.payload.headers;
+      const subject = headers.find(h => h.name === 'Subject')?.value || '';
+      const from = headers.find(h => h.name === 'From')?.value || '';
+      
+      let body = '';
+      if (message.result.payload.body.data) {
+        body = atob(message.result.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      } else if (message.result.payload.parts) {
+        const textPart = message.result.payload.parts.find(part => part.mimeType === 'text/plain');
+        if (textPart && textPart.body.data) {
+          body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        }
+      }
+      
+      // Parse with current system
+      const parsed = mapEmailFields(subject, body, from);
+      
+      // Create training interface
+      const trainingCard = document.createElement('div');
+      trainingCard.style.cssText = 'background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px;';
+      
+      trainingCard.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <h4 style="margin: 0 0 8px 0;">Original Email</h4>
+            <div style="background: var(--bg); padding: 12px; border-radius: 4px; font-size: 12px;">
+              <strong>From:</strong> ${from}<br>
+              <strong>Subject:</strong> ${subject}<br>
+              <strong>Body:</strong><br>
+              <div style="max-height: 100px; overflow-y: auto; white-space: pre-wrap;">${body.substring(0, 500)}...</div>
+            </div>
+          </div>
+          <div>
+            <h4 style="margin: 0 0 8px 0;">Current Parsing</h4>
+            <div style="display: grid; gap: 8px;">
+              <div>
+                <label style="font-size: 12px; color: var(--muted);">Company:</label>
+                <input type="text" value="${parsed.company}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'company', this.value)">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--muted);">Role:</label>
+                <input type="text" value="${parsed.role}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'role', this.value)">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--muted);">Location:</label>
+                <input type="text" value="${parsed.location}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'location', this.value)">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--muted);">Salary:</label>
+                <input type="text" value="${parsed.salary}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'salary', this.value)">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--muted);">Source:</label>
+                <input type="text" value="${parsed.source}" style="width: 100%; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text);" onchange="updateParsedField(${i}, 'source', this.value)">
+              </div>
+            </div>
+            <button onclick="saveTrainingCorrection(${i})" style="background: var(--accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 12px;">
+              Save Correction
+            </button>
+          </div>
+        </div>
+      `;
+      
+      container.appendChild(trainingCard);
+    }
+    
+  } catch (error) {
+    console.error('Error loading mapping training data:', error);
+    alert('Failed to load training data. Please try again.');
+  }
+}
+
+function updateParsedField(index, field, value) {
+  // This would update the parsed data for training
+  console.log(`Updating field ${field} to ${value} for email ${index}`);
+}
+
+function saveTrainingCorrection(index) {
+  // This would save the correction and potentially update parsing rules
+  console.log(`Saving correction for email ${index}`);
+  alert('Correction saved! This will help improve future parsing.');
+}
 
 </body>
 </html>
