@@ -254,9 +254,9 @@ body {
 .focus-block {
   width: 16px;
   height: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.8);
   transition: all 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
   overflow: hidden;
@@ -1062,6 +1062,7 @@ progress::-webkit-progress-value {
             <option value="8">8h</option>
           </select>
           <span id="progressText" style="color: var(--muted); font-size: 11px;">0/16</span>
+          <span id="totalTimeText" style="color: var(--accent); font-size: 11px; font-weight: 500;">Total: 0m</span>
         </div>
       </div>
       
@@ -2140,9 +2141,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.4.8'; // Mobile button overflow fix
+const APP_VERSION = '3.4.9'; // Focus session improvements and timer display
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 18:45:00';
+const APP_DEPLOY_TIME = '2025-01-08 19:00:00';
 
 // State
 let state = {
@@ -2817,6 +2818,9 @@ function renderFocusPanel() {
     // Render block grid
     renderNewBlockGrid();
     
+    // Update total accumulated time
+    updateTotalTimeDisplay();
+    
     // Handle active chunk timer
     if (currentDay.activeChunk && currentDay.activeChunk.status === 'active') {
       // Restore timer state from saved data
@@ -3158,6 +3162,7 @@ function finishFocusChunk() {
   
   // Update UI
   renderNewBlockGrid();
+  updateTotalTimeDisplay();
   saveToFirebase();
   
   // Check if daily goal is achieved
@@ -3235,6 +3240,27 @@ function updateDailyGoal() {
   state.timeBlocking.currentDay.goalBlocks = goalBlocks;
   saveToFirebase();
   renderNewBlockGrid();
+  updateTotalTimeDisplay();
+}
+
+function updateTotalTimeDisplay() {
+  const totalTimeElement = document.getElementById('totalTimeText');
+  if (!totalTimeElement || !state.timeBlocking?.currentDay) return;
+  
+  const currentDay = state.timeBlocking.currentDay;
+  const completedBlocks = currentDay.completedBlocks || 0;
+  const totalMinutes = completedBlocks * 15; // Each block is 15 minutes
+  
+  let timeText;
+  if (totalMinutes < 60) {
+    timeText = `${totalMinutes}m`;
+  } else {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    timeText = minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  
+  totalTimeElement.textContent = `Total: ${timeText}`;
 }
 
 function renderBlockGrid() {
