@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+î<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1049,6 +1049,7 @@ progress::-webkit-progress-value {
           <h3 style="margin: 0; color: var(--accent); font-size: 16px;">🎯 Focus Session</h3>
           <span id="sessionStartTime" style="color: var(--muted); font-size: 12px;">Started: --:--</span>
         </div>
+        <button onclick="showFocusInstructions()" style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" onmouseover="this.style.background='var(--accent)'; this.style.color='white';" onmouseout="this.style.background='var(--bg)'; this.style.color='var(--muted)';" title="Focus Session Instructions">i</button>
         <div style="display: flex; align-items: center; gap: 6px;">
           <label style="color: var(--text); font-size: 12px;">Goal:</label>
           <select id="activeDailyGoalSelect" onchange="updateDailyGoal()" style="height: 26px; font-size: 11px; padding: 0 4px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 60px;">
@@ -2141,9 +2142,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.5.0'; // Timer coordination and conflict resolution
+const APP_VERSION = '3.5.1'; // Focus session instructions popup
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 19:15:00';
+const APP_DEPLOY_TIME = '2025-01-08 19:30:00';
 
 // State
 let state = {
@@ -3325,6 +3326,14 @@ function checkTimerConflicts() {
       saveToFirebase();
     }
   }
+}
+
+function showFocusInstructions() {
+  document.getElementById('focusInstructionsModal').style.display = 'flex';
+}
+
+function closeFocusInstructions() {
+  document.getElementById('focusInstructionsModal').style.display = 'none';
 }
 
 function updateTotalTimeDisplay() {
@@ -10545,6 +10554,113 @@ function confirmReset() {
         Track your job search progress<br>
         All data stored locally on your device
       </p>
+    </div>
+  </div>
+</div>
+
+<!-- Focus Instructions Modal -->
+<div id="focusInstructionsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; padding:20px;" onclick="closeFocusInstructions()">
+  <div style="background:var(--panel); border-radius:16px; padding:32px; max-width:800px; max-height:80vh; overflow-y:auto; margin:20px;" onclick="event.stopPropagation()">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <h2 style="margin:0; color:var(--accent);">🎯 Focus Session Guide</h2>
+      <button onclick="closeFocusInstructions()" style="background:none; border:none; color:var(--muted); font-size:24px; cursor:pointer; padding:0; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">×</button>
+    </div>
+    
+    <div style="color:var(--text); line-height:1.6; font-size:14px;">
+      <h3 style="color:var(--accent); margin-top:24px; margin-bottom:12px;">Getting Started</h3>
+      <ol style="margin-bottom:20px;">
+        <li><strong>Set Your Daily Goal:</strong> Choose 1-8 hours (4-32 blocks) from the dropdown</li>
+        <li><strong>Click "Start Focus Day":</strong> This initializes your session and shows the progress grid</li>
+        <li><strong>Session Info:</strong> Shows start time and your selected goal</li>
+      </ol>
+
+      <h3 style="color:var(--accent); margin-top:24px; margin-bottom:12px;">Understanding the Interface</h3>
+      <p><strong>Header Row:</strong></p>
+      <ul style="margin-bottom:20px;">
+        <li><strong>🎯 Focus Session:</strong> Session title</li>
+        <li><strong>Started: [time]:</strong> When you began your focus day</li>
+        <li><strong>Goal: [dropdown]:</strong> Adjustable daily target (1h-8h)</li>
+        <li><strong>Progress: X/Y:</strong> Current blocks completed vs. goal</li>
+        <li><strong>Total: Xh Ym:</strong> Accumulated time across all completed chunks</li>
+      </ul>
+
+      <p><strong>Progress Grid:</strong></p>
+      <ul style="margin-bottom:20px;">
+        <li><strong>White Squares:</strong> Unfinished 15-minute blocks</li>
+        <li><strong>Yellow Squares:</strong> Queued blocks for next chunk</li>
+        <li><strong>Green Squares:</strong> Completed blocks</li>
+        <li><strong>Blue Squares:</strong> Currently active block (with pulse animation)</li>
+      </ul>
+
+      <h3 style="color:var(--accent); margin-top:24px; margin-bottom:12px;">Using Focus Sessions</h3>
+      
+      <p><strong>Starting a Chunk:</strong></p>
+      <ol style="margin-bottom:20px;">
+        <li><strong>Select Duration:</strong> Choose your desired chunk length (15m-120m)</li>
+        <li><strong>Click Start:</strong> Timer begins counting down, selected blocks turn yellow (queued), first block turns blue (active) with pulse animation, green cycle animation plays on background</li>
+      </ol>
+
+      <p><strong>During a Chunk:</strong></p>
+      <ul style="margin-bottom:20px;">
+        <li><strong>Timer Display:</strong> Shows remaining time in MM:SS format</li>
+        <li><strong>Progress Tracking:</strong> Blocks turn green every 15 minutes</li>
+        <li><strong>Visual Feedback:</strong> Active block pulses blue</li>
+        <li><strong>Automatic Completion:</strong> Chunk finishes when timer reaches zero</li>
+      </ul>
+
+      <p><strong>Chunk Completion:</strong></p>
+      <ul style="margin-bottom:20px;">
+        <li><strong>Rainbow Alert:</strong> Background cycles through rainbow colors</li>
+        <li><strong>Block Conversion:</strong> All queued blocks turn green</li>
+        <li><strong>Timer Continues:</strong> If no new chunk selected, timer keeps running</li>
+        <li><strong>Auto-Progression:</strong> New green blocks added every 15 minutes</li>
+      </ul>
+
+      <h3 style="color:var(--accent); margin-top:24px; margin-bottom:12px;">Button Functions</h3>
+      <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+        <tr style="border-bottom:1px solid var(--line);">
+          <th style="text-align:left; padding:8px 0; color:var(--accent);">Button</th>
+          <th style="text-align:left; padding:8px 0; color:var(--accent);">Function</th>
+          <th style="text-align:left; padding:8px 0; color:var(--accent);">Confirmation Required</th>
+        </tr>
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:8px 0;"><strong>Start</strong></td>
+          <td style="padding:8px 0;">Begins new chunk timer</td>
+          <td style="padding:8px 0;">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:8px 0;"><strong>Pause</strong></td>
+          <td style="padding:8px 0;">Pauses current chunk</td>
+          <td style="padding:8px 0;">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:8px 0;"><strong>Resume</strong></td>
+          <td style="padding:8px 0;">Resumes paused chunk</td>
+          <td style="padding:8px 0;">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:8px 0;"><strong>Reset</strong></td>
+          <td style="padding:8px 0;">Resets entire day's progress</td>
+          <td style="padding:8px 0;">Yes</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><strong>End</strong></td>
+          <td style="padding:8px 0;">Ends focus day, saves to history</td>
+          <td style="padding:8px 0;">Yes</td>
+        </tr>
+      </table>
+
+      <h3 style="color:var(--accent); margin-top:24px; margin-bottom:12px;">Advanced Features</h3>
+      <ul style="margin-bottom:20px;">
+        <li><strong>Timer Coordination:</strong> Focus session timer pauses when you enter task focus mode and resumes when you exit</li>
+        <li><strong>Multi-Device Sync:</strong> Progress syncs across all devices via Firebase</li>
+        <li><strong>Visual Alerts:</strong> Green cycle when chunk starts, rainbow cycle when chunk completes, yellow pulse when paused</li>
+        <li><strong>Conflict Resolution:</strong> Automatically handles timer conflicts between devices</li>
+      </ul>
+
+      <div style="background:var(--panel-hover); padding:16px; border-radius:8px; margin-top:24px; font-size:12px; color:var(--muted);">
+        <strong>Technical Notes:</strong> Each block = 15 minutes. Chunk types: 15m (1 block), 30m (2 blocks), 45m (3 blocks), etc. All progress saved to Firebase and local storage. Optimized for mobile and desktop use.
+      </div>
     </div>
   </div>
 </div>
