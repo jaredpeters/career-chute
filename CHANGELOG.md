@@ -4,6 +4,19 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.4.3] - 2025-01-08
+
+### 🛠️ FIXED: CSV Import Workflow
+- **Direct Pipeline Import**: CSV imports now go directly to Pipeline instead of Job Queue
+- **Status Fix**: Imported applications now have status 'pipeline' instead of 'queued'
+- **Added Pipeline Timestamp**: Imported applications include `addedToPipeline` field
+- **Simplified Workflow**: No need to manually move from Job Queue to Pipeline
+
+### 🔧 Technical Details
+- **Removed Job Queue Dependency**: Since Job Queue was archived, CSV imports bypass it entirely
+- **Consistent Status**: All imported applications immediately visible in Pipeline
+- **Better UX**: One-step import process instead of two-step (import → move to pipeline)
+
 ## [3.4.2] - 2025-01-08
 
 ### 🎯 NEW: Focus Session Redesign
