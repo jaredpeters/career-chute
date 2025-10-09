@@ -1083,13 +1083,13 @@ progress::-webkit-progress-value {
             <option value="90">90m</option>
             <option value="120">120m</option>
           </select>
-          <button id="startChunkBtn" onclick="startFocusChunk()" class="modern-button primary" style="height: 26px; padding: 0 6px; font-size: 11px; width: auto;">Start</button>
+          <button id="startChunkBtn" onclick="startFocusChunk()" class="modern-button primary" style="height: 26px; padding: 0 8px; font-size: 11px; width: auto; min-width: 0;">Start</button>
         </div>
         
         <!-- Right: Action Buttons -->
         <div style="display: flex; gap: 4px;">
-          <button onclick="resetFocusProgress()" class="modern-button secondary" style="height: 26px; padding: 0 6px; font-size: 11px; width: auto;">Reset</button>
-          <button onclick="endFocusDay()" class="modern-button" style="height: 26px; padding: 0 6px; font-size: 11px; background: var(--warn); width: auto;">End</button>
+          <button onclick="resetFocusProgress()" class="modern-button secondary" style="height: 26px; padding: 0 8px; font-size: 11px; width: auto; min-width: 0;">Reset</button>
+          <button onclick="endFocusDay()" class="modern-button" style="height: 26px; padding: 0 8px; font-size: 11px; background: var(--warn); width: auto; min-width: 0;">End</button>
         </div>
       </div>
       
@@ -2140,9 +2140,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.4.7'; // Ultra-compact focus session redesign
+const APP_VERSION = '3.4.8'; // Mobile button overflow fix
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 18:30:00';
+const APP_DEPLOY_TIME = '2025-01-08 18:45:00';
 
 // State
 let state = {
