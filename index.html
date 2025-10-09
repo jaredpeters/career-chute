@@ -1043,15 +1043,37 @@ progress::-webkit-progress-value {
     <!-- Active Session Section -->
     <div id="activeSessionSection" style="display: none;">
       <!-- Header -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
         <div>
           <h3 style="color: var(--accent); font-size: 18px; font-weight: 600; margin: 0;">🎯 Focus Session</h3>
           <p style="color: var(--muted); font-size: 12px; margin: 4px 0 0 0;">Started: <span id="sessionStartTime">--:--</span></p>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button onclick="resetFocusProgress()" class="modern-button secondary" style="height: 32px; padding: 0 12px; font-size: 12px;">Reset Progress</button>
-          <button onclick="endFocusDay()" class="modern-button" style="height: 32px; padding: 0 12px; font-size: 12px; background: var(--warn);">End Day</button>
+          <!-- Buttons moved to chunk controls section -->
         </div>
+      </div>
+      
+      <!-- Daily Goal Selector -->
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+        <label style="color: var(--text); font-size: 14px; font-weight: 500;">Daily Goal:</label>
+        <select id="activeDailyGoalSelect" onchange="updateDailyGoal()" style="height: 32px; font-size: 12px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 100px;">
+          <option value="1">1h (4)</option>
+          <option value="2">2h (8)</option>
+          <option value="3">3h (12)</option>
+          <option value="4">4h (16)</option>
+          <option value="5">5h (20)</option>
+          <option value="6">6h (24)</option>
+          <option value="7">7h (28)</option>
+          <option value="8">8h (32)</option>
+          <option value="9">9h (36)</option>
+          <option value="10">10h (40)</option>
+          <option value="11">11h (44)</option>
+          <option value="12">12h (48)</option>
+          <option value="14">14h (56)</option>
+          <option value="16">16h (64)</option>
+          <option value="18">18h (72)</option>
+          <option value="20">20h (80)</option>
+        </select>
       </div>
       
       <!-- Progress Blocks -->
@@ -1064,32 +1086,44 @@ progress::-webkit-progress-value {
       </div>
       
       <!-- Chunk Controls -->
-      <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
         <!-- Chunk Selection -->
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <span style="color: var(--text); font-size: 14px; font-weight: 500;">Next Chunk:</span>
-          <select id="chunkDuration" style="height: 36px; font-size: 14px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 100px;">
-            <option value="15">15 min (1 block)</option>
-            <option value="30">30 min (2 blocks)</option>
-            <option value="45" selected>45 min (3 blocks)</option>
-            <option value="60">60 min (4 blocks)</option>
-            <option value="90">90 min (6 blocks)</option>
-            <option value="120">120 min (8 blocks)</option>
-          </select>
-          <button id="startChunkBtn" onclick="startFocusChunk()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 14px;">Start Chunk</button>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="color: var(--text); font-size: 12px; font-weight: 500;">Next Chunk:</span>
+          <div style="display: flex; gap: 6px;">
+            <select id="chunkDuration" style="height: 28px; font-size: 12px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--text); flex: 1;">
+              <option value="15">15m (1)</option>
+              <option value="30">30m (2)</option>
+              <option value="45" selected>45m (3)</option>
+              <option value="60">60m (4)</option>
+              <option value="90">90m (6)</option>
+              <option value="120">120m (8)</option>
+            </select>
+            <button id="startChunkBtn" onclick="startFocusChunk()" class="modern-button primary" style="height: 28px; padding: 0 8px; font-size: 10px;">Start</button>
+          </div>
         </div>
         
-        <!-- Active Chunk Display -->
-        <div id="activeChunkSection" style="display: none; padding: 16px; background: rgba(90, 208, 255, 0.1); border: 1px solid rgba(90, 208, 255, 0.3); border-radius: 8px; margin-bottom: 16px;">
-          <div style="text-align: center; margin-bottom: 12px;">
-            <span style="color: var(--accent); font-size: 16px; font-weight: 600;">Chunk Active</span>
-            <div id="chunkProgress" style="color: var(--muted); font-size: 12px; margin-top: 2px;">0/3 blocks completed</div>
+        <!-- Quick Actions -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="color: var(--text); font-size: 12px; font-weight: 500;">Actions:</span>
+          <div style="display: flex; gap: 6px;">
+            <button onclick="resetFocusProgress()" class="modern-button secondary" style="height: 28px; padding: 0 8px; font-size: 10px;">Reset</button>
+            <button onclick="endFocusDay()" class="modern-button" style="height: 28px; padding: 0 8px; font-size: 10px; background: var(--warn);">End Day</button>
           </div>
-          <div id="chunkTimer" class="mono" style="font-size: 24px; font-weight: 600; color: var(--accent); text-align: center; margin-bottom: 12px;">00:00</div>
-          <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-            <button id="pauseChunkBtn" onclick="pauseFocusChunk()" class="modern-button secondary" style="height: 32px; padding: 0 12px; font-size: 13px; min-width: 80px;">⏸️ Pause</button>
-            <button id="finishChunkBtn" onclick="finishFocusChunk()" class="modern-button" style="height: 32px; padding: 0 12px; font-size: 13px; background: var(--ok); min-width: 80px;">✓ Finish</button>
-          </div>
+        </div>
+        
+      </div>
+      
+      <!-- Active Chunk Display -->
+      <div id="activeChunkSection" style="display: none; padding: 12px; background: rgba(90, 208, 255, 0.1); border: 1px solid rgba(90, 208, 255, 0.3); border-radius: 6px; margin-bottom: 12px;">
+        <div style="text-align: center; margin-bottom: 8px;">
+          <span style="color: var(--accent); font-size: 14px; font-weight: 600;">Chunk Active</span>
+          <div id="chunkProgress" style="color: var(--muted); font-size: 10px; margin-top: 2px;">0/3 blocks completed</div>
+        </div>
+        <div id="chunkTimer" class="mono" style="font-size: 20px; font-weight: 600; color: var(--accent); text-align: center; margin-bottom: 8px;">00:00</div>
+        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+          <button id="pauseChunkBtn" onclick="pauseFocusChunk()" class="modern-button secondary" style="height: 28px; padding: 0 8px; font-size: 10px; min-width: 60px;">⏸️ Pause</button>
+          <button id="finishChunkBtn" onclick="finishFocusChunk()" class="modern-button" style="height: 28px; padding: 0 8px; font-size: 10px; background: var(--ok); min-width: 60px;">✓ Finish</button>
         </div>
       </div>
     </div>
@@ -1719,7 +1753,6 @@ Text to parse:</textarea>
     <h3 style="margin-bottom: 16px;">Data Management</h3>
     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
       <button onclick="exportData()" class="secondary">Export Data</button>
-      <button onclick="exportToICal()" class="secondary">📅 Export to iCal</button>
       <button onclick="importData()" class="secondary">Import Data</button>
       <button onclick="confirmReset()" class="modern-button secondary" style="height: 32px; padding: 0 12px; font-size: 12px; color: var(--bad);">Reset All Data</button>
     </div>
@@ -1752,7 +1785,8 @@ Text to parse:</textarea>
       <div id="focusUrlRow" style="display:none;">
         <div style="display:flex; gap:8px; align-items:center;">
           <input type="url" id="focusAppUrl" placeholder="https://..." style="flex:1;">
-          <button class="secondary" onclick="saveFocusUrl()" style="min-width:80px;">Save</button>
+          <button class="secondary" onclick="openFocusUrl()" style="min-width:60px;">Open</button>
+          <button class="secondary" onclick="saveFocusUrl()" style="min-width:60px;">Save</button>
         </div>
       </div>
       <div>
@@ -2127,9 +2161,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.4.4'; // UI improvements, mobile fixes, and safety enhancements
+const APP_VERSION = '3.4.5'; // Focus session improvements, mobile fixes, and UI enhancements
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 16:45:00';
+const APP_DEPLOY_TIME = '2025-01-08 17:15:00';
 
 // State
 let state = {
@@ -2777,7 +2811,29 @@ function renderFocusPanel() {
     
     // Update session info
     const currentDay = state.timeBlocking.currentDay;
+    const today = getTodayISO();
+    
+    // Update start time if it's a new day
+    if (currentDay.date !== today) {
+      const now = new Date();
+      currentDay.startTime = now.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'America/Los_Angeles'
+      });
+      currentDay.date = today;
+      saveToFirebase();
+    }
+    
     document.getElementById('sessionStartTime').textContent = currentDay.startTime;
+    
+    // Update daily goal selector
+    const goalSelect = document.getElementById('activeDailyGoalSelect');
+    if (goalSelect) {
+      const goalHours = Math.floor(currentDay.goalBlocks / 4);
+      goalSelect.value = goalHours;
+    }
     
     // Render block grid
     renderNewBlockGrid();
@@ -3182,6 +3238,17 @@ function triggerGreenAlert() {
   setTimeout(() => {
     document.body.classList.remove('green-alert');
   }, 800);
+}
+
+function updateDailyGoal() {
+  if (!state.timeBlocking?.currentDay) return;
+  
+  const goalHours = parseInt(document.getElementById('activeDailyGoalSelect').value);
+  const goalBlocks = goalHours * 4;
+  
+  state.timeBlocking.currentDay.goalBlocks = goalBlocks;
+  saveToFirebase();
+  renderNewBlockGrid();
 }
 
 function renderBlockGrid() {
@@ -3733,19 +3800,19 @@ function renderTaskCard(task, isCompleted) {
   return `
     <div class="task-card ${urgency}" onclick='enterFocus("${task.id}")'>
       <div class="icon">${icon}</div>
-      <div style="flex: 1;">
+      <div style="flex: 1; min-width: 0;">
         <div style="font-weight: 600; margin-bottom: 4px;">${detail.title}</div>
         <div style="font-size: 14px; color: var(--muted);">${detail.subtitle}</div>
         ${task.deadline ? `<div style="font-size: 12px; color: var(--warn); margin-top: 4px;">⏰ ${formatDate(task.deadline)}</div>` : ''}
         ${accumulatedTime > 0 ? `<div style="font-size: 12px; color: var(--accent); margin-top: 4px;">⏱️ ${accumulatedTime} min in progress</div>` : ''}
       </div>
-      <div style="font-size: 14px; color: var(--muted);">
-        ${task.estimatedTime} min
-      </div>
-      <div class="item-actions" style="margin-left:8px;">
-        ${task.type === 'event' ? `<button class="icon-btn" onclick="event.stopPropagation(); downloadEventICal('${task.refId}')" title="Download iCal">📅</button>` : ''}
-        <button class="icon-btn" onclick="event.stopPropagation(); editQueueItem('${task.id}')" title="Edit">✏️</button>
-        <button class="icon-btn" onclick="event.stopPropagation(); deleteQueueItem('${task.id}')" title="Delete">🗑️</button>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: 8px;">
+        <div style="font-size: 12px; color: var(--muted);">${task.estimatedTime}m</div>
+        <div class="item-actions" style="display: flex; gap: 4px;">
+          ${task.type === 'event' ? `<button class="icon-btn" onclick="event.stopPropagation(); downloadEventICal('${task.refId}')" title="Download iCal">📅</button>` : ''}
+          <button class="icon-btn" onclick="event.stopPropagation(); editQueueItem('${task.id}')" title="Edit">✏️</button>
+          <button class="icon-btn" onclick="event.stopPropagation(); deleteQueueItem('${task.id}')" title="Delete">🗑️</button>
+        </div>
       </div>
     </div>
   `;
@@ -3852,9 +3919,9 @@ function getTaskUrgency(task) {
 
 function getTaskIcon(type) {
   const icons = {
-    application: '💼',
+    application: '📄',
     networking: '🤝',
-    tailoring: '✏️',
+    tailoring: '🔍',
     event: '📅'
   };
   return icons[type] || '📋';
@@ -4139,6 +4206,15 @@ function saveFocusUrl() {
   
   app.url = url;
   saveToFirebase();
+}
+
+function openFocusUrl() {
+  const url = document.getElementById('focusAppUrl').value.trim();
+  if (url && isValidUrl(url).isValid) {
+    window.open(url, '_blank');
+  } else {
+    alert('Please enter a valid URL first');
+  }
 }
 
 function updateFocusSessionUI() {
@@ -4576,6 +4652,7 @@ function renderPlanScreen() {
           ${event.calendarUrl ? `<div style="margin-top: 6px; font-size: 12px;"><a href="${event.calendarUrl}" target="_blank" style="color: var(--accent);">📅 Open calendar</a></div>` : ''}
         </div>
         <div class="item-actions">
+          <button class="icon-btn" onclick="downloadEventICal('${event.id}')" title="Download iCal">📅</button>
           <button class="icon-btn" onclick="deleteEvent('${event.id}')" title="Delete">🗑️</button>
           <button class="icon-btn" onclick="editEvent('${event.id}')" title="Edit">✏️</button>
         </div>
