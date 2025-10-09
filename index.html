@@ -1565,7 +1565,6 @@ progress::-webkit-progress-value {
         <button onclick="syncToGoogleSheets()" class="modern-button secondary" title="Sync all jobs to your Google Sheet" style="height: 36px; padding: 0 16px; font-size: 13px;">Sync Now</button>
         <button onclick="openSpreadsheet()" id="openSheetBtn" class="modern-button secondary" title="Open your spreadsheet in a new tab" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Open Sheet</button>
         <button onclick="resetSpreadsheet()" class="modern-button secondary" title="Reset and create a new sheet" style="height: 36px; padding: 0 16px; font-size: 13px; color: var(--warn);">Reset Sheet Connection</button>
-        <button onclick="showCSVImport()" class="modern-button secondary" title="Import jobs from CSV (from Claude chat)" style="height: 36px; padding: 0 16px; font-size: 13px; color: var(--ok);">Import CSV</button>
       </div>
       
       <div id="sheetsLastSync" style="margin-top: 12px; font-size: 12px; color: var(--muted);"></div>
@@ -1891,6 +1890,10 @@ Text to parse:</textarea>
       </select>
     </div>
     <div class="form-group">
+      <label>Link (Optional)</label>
+      <input type="url" id="newEventLink" placeholder="https://example.com">
+    </div>
+    <div class="form-group">
       <label>Notes</label>
       <textarea id="newEventNotes" rows="3"></textarea>
     </div>
@@ -2054,7 +2057,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.3.6'; // Fix CSV parsing for unquoted commas and Gmail UI errors
+const APP_VERSION = '3.4.0'; // Major fixes: duplicate tasks, status mapping, event links
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -4066,7 +4069,8 @@ function renderPlanScreen() {
             ${formatDate(event.date)} • ${event.duration} min • ${event.type}
           </div>
           ${event.notes ? `<div style="margin-top: 8px; font-size: 14px;">${event.notes}</div>` : ''}
-          ${event.calendarUrl ? `<div style="margin-top: 6px; font-size: 12px;"><a href="${event.calendarUrl}" target="_blank" style="color: var(--accent);">Open calendar</a></div>` : ''}
+          ${event.link ? `<div style="margin-top: 6px; font-size: 12px;"><a href="${event.link}" target="_blank" style="color: var(--accent);">🔗 Open Link</a></div>` : ''}
+          ${event.calendarUrl ? `<div style="margin-top: 6px; font-size: 12px;"><a href="${event.calendarUrl}" target="_blank" style="color: var(--accent);">📅 Open calendar</a></div>` : ''}
         </div>
         <div class="item-actions">
           <button class="icon-btn" onclick="deleteEvent('${event.id}')" title="Delete">🗑️</button>
@@ -4975,6 +4979,7 @@ function showAddEventModal() {
   document.getElementById('newEventDate').value = '';
   document.getElementById('newEventDuration').value = '120';
   document.getElementById('newEventType').value = 'fair';
+  document.getElementById('newEventLink').value = '';
   document.getElementById('newEventNotes').value = '';
   
   document.getElementById('addEventModal').classList.add('active');
@@ -4995,11 +5000,17 @@ function updateTaskModalForType() {
   refSelect.innerHTML = '<option value="">-- Select --</option>';
   
   if (type === 'application') {
+    const today = getTodayISO();
+    const todayTaskIds = (state.dailyTasks[today] || []).map(task => task.refId).filter(id => id);
+    
     state.applications.forEach(app => {
-      const option = document.createElement('option');
-      option.value = app.id;
-      option.textContent = `${app.company} - ${app.role}`;
-      refSelect.appendChild(option);
+      // Only show applications that aren't already in today's queue
+      if (!todayTaskIds.includes(app.id)) {
+        const option = document.createElement('option');
+        option.value = app.id;
+        option.textContent = `${app.company} - ${app.role}`;
+        refSelect.appendChild(option);
+      }
     });
     selectSection.style.display = 'block';
   } else if (type === 'networking') {
@@ -5282,6 +5293,7 @@ function openEditModal(type, entity) {
     document.getElementById('newEventDate').value = entity.date || '';
     document.getElementById('newEventDuration').value = entity.duration || 120;
     document.getElementById('newEventType').value = entity.type || 'networking';
+    document.getElementById('newEventLink').value = entity.link || '';
     document.getElementById('newEventNotes').value = entity.notes || '';
     const modal = document.getElementById('addEventModal');
     modal.classList.add('active');
@@ -5324,6 +5336,7 @@ function saveEditedEvent(eventId) {
   event.date = document.getElementById('newEventDate').value;
   event.duration = parseInt(document.getElementById('newEventDuration').value) || 120;
   event.type = document.getElementById('newEventType').value;
+  event.link = document.getElementById('newEventLink').value.trim();
   event.notes = document.getElementById('newEventNotes').value.trim();
   saveToFirebase();
   closeModal('addEventModal');
@@ -5416,6 +5429,7 @@ function addEvent() {
   const duration = parseInt(document.getElementById('newEventDuration').value);
   const type = document.getElementById('newEventType').value;
   const notes = document.getElementById('newEventNotes').value.trim();
+  const link = document.getElementById('newEventLink').value.trim();
   
   if (!name || !date) {
     alert('Please fill in event name and date');
@@ -5429,6 +5443,7 @@ function addEvent() {
     duration: duration,
     type: type,
     notes: notes,
+    link: link,
     attended: false
   };
   
@@ -5440,6 +5455,7 @@ function addEvent() {
   document.getElementById('newEventDate').value = '';
   document.getElementById('newEventDuration').value = '120';
   document.getElementById('newEventType').value = 'fair';
+  document.getElementById('newEventLink').value = '';
   document.getElementById('newEventNotes').value = '';
   
   closeModal('addEventModal');
@@ -6668,8 +6684,8 @@ function importCSVData() {
           benefits: values[headers.indexOf('benefits')] || '',
           source: values[headers.indexOf('source')] || 'CSV Import',
           notes: values[headers.indexOf('notes')] || '',
-          status: 'applied',
-          dateApplied: new Date().toISOString(),
+          status: 'queued',
+          dateApplied: null,
           priority: 'medium',
           createdAt: new Date().toISOString()
         };
@@ -6843,8 +6859,8 @@ function importFromCSVText() {
           benefits: values[headers.indexOf('benefits')] || '',
           source: values[headers.indexOf('source')] || 'CSV Import',
           notes: values[headers.indexOf('notes')] || '',
-          status: 'applied',
-          dateApplied: new Date().toISOString(),
+          status: 'queued',
+          dateApplied: null,
           priority: 'medium',
           createdAt: new Date().toISOString()
         };

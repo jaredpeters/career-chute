@@ -4,6 +4,21 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.4.0] - 2025-10-08
+
+### 🎉 MAJOR FIXES: Task Management & Event Links
+- **Duplicate Task Prevention**: Applications already in today's queue no longer appear in "Add Task" dropdown
+- **Status Mapping Fixed**: CSV imports now set status to "queued" (not "applied")
+- **Event Links Added**: Events now have an optional link field that displays in the plan view
+- **Orphaned Task Fix**: MedGEO and other orphaned tasks are now filtered out
+- **CSV Import Removed**: Removed duplicate CSV import button from Google Sheets settings
+
+### 🔧 Technical Details
+- **Filter Logic**: `updateTaskModalForType` now filters out tasks already in today's queue
+- **Status Change**: CSV imports set `status: 'queued'` and `dateApplied: null`
+- **Event Link Field**: Added to event creation, editing, and display
+- **UI Cleanup**: Streamlined Google Sheets integration section
+
 ## [3.3.6] - 2025-10-08
 
 ### 🛠️ FIXED: CSV Parsing for Unquoted Commas & Gmail UI Errors
