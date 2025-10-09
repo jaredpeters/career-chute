@@ -4,6 +4,19 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.4.1] - 2025-10-08
+
+### 🛠️ FIXED: CSV Parsing & Application Status
+- **CSV Parsing Fixed**: Improved parseCSVLineRobust to handle unquoted commas correctly
+- **Field Alignment**: Salary, URL, benefits, and notes now map to correct columns
+- **Application Status**: Adding existing applications to today's queue now updates status to "queued"
+- **Status Reset**: Applications moved back to queue have dateApplied cleared
+
+### 🔧 Technical Details
+- **Smart CSV Merging**: Better logic for reconstructing 8-column format from split data
+- **Status Management**: addTaskToToday now updates application status when adding existing apps
+- **Debug Logging**: Enhanced console output for CSV parsing troubleshooting
+
 ## [3.4.0] - 2025-10-08
 
 ### 🎉 MAJOR FIXES: Task Management & Event Links

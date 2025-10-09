@@ -2057,7 +2057,7 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.4.0'; // Major fixes: duplicate tasks, status mapping, event links
+const APP_VERSION = '3.4.1'; // Fix CSV parsing and application status updates
 const APP_BUILD_DATE = '2025-10-08';
 
 // State
@@ -5208,6 +5208,13 @@ function addTaskToToday() {
     if (type === 'application') {
       const tailoringTask = { id: generateId(), type: 'tailoring', refId: refId, completed: false, estimatedTime: 20, notes: '' };
       state.dailyTasks[today].push(tailoringTask);
+      
+      // Update application status to 'queued' if it was 'applied'
+      const app = state.applications.find(a => a.id === refId);
+      if (app && app.status === 'applied') {
+        app.status = 'queued';
+        app.dateApplied = null;
+      }
     }
   } else {
     alert('Please select an item or use quick add');
@@ -6434,13 +6441,26 @@ async function syncToGoogleSheets() {
       await initializeSpreadsheet();
     }
     
-    // Only sync jobs that are in pipeline (not queued)
-    const pipelineJobs = state.applications.filter(app => app.status !== 'queued');
+    // Sync both jobs and contacts
+    await syncJobsToGoogleSheets();
+    await syncContactsToGoogleSheets();
     
-    if (pipelineJobs.length === 0) {
-      console.log('No pipeline jobs to sync');
-      return;
-    }
+    console.log('✅ Synced all data to Google Sheets');
+    updateSheetsUI();
+  } catch (error) {
+    console.error('Error syncing to Google Sheets:', error);
+    alert('Failed to sync: ' + (error.result?.error?.message || error.message));
+  }
+}
+
+async function syncJobsToGoogleSheets() {
+  // Only sync jobs that are in pipeline (not queued)
+  const pipelineJobs = state.applications.filter(app => app.status !== 'queued');
+  
+  if (pipelineJobs.length === 0) {
+    console.log('No pipeline jobs to sync');
+    return;
+  }
     
     // Read existing sheet data to find rows by ID
     const existingData = await gapi.client.sheets.spreadsheets.values.get({
@@ -6765,34 +6785,36 @@ function parseCSVLineRobust(line) {
     return standardResult;
   }
   
-  // If we have more columns than expected, try to merge the extra ones
+  // If we have more columns than expected, try to intelligently merge
   if (standardResult.length > 8) {
     console.log('Too many columns, attempting to merge...');
+    console.log('Original split:', standardResult);
     
     // The issue is likely that benefits field has unquoted commas
-    // Let's try to intelligently merge the extra columns
-    const merged = [...standardResult];
+    // We need to reconstruct the proper 8 columns
+    const result = [
+      standardResult[0], // company
+      standardResult[1], // role  
+      standardResult[2], // location
+      standardResult[3], // salary
+      standardResult[4], // url
+      '', // benefits - we'll reconstruct this
+      '', // source - we'll reconstruct this
+      ''  // notes - we'll reconstruct this
+    ];
     
-    // Merge columns 5-7 (benefits field) if we have too many
-    if (merged.length > 8) {
-      const benefitsParts = merged.slice(5, merged.length - 2); // Get the middle parts
-      const benefits = benefitsParts.join(', '); // Join with commas
-      
-      // Reconstruct with merged benefits
-      const result = [
-        merged[0], // company
-        merged[1], // role
-        merged[2], // location
-        merged[3], // salary
-        merged[4], // url
-        benefits,   // merged benefits
-        merged[merged.length - 2], // source
-        merged[merged.length - 1]  // notes
-      ];
-      
-      console.log('Merged result:', result);
-      return result;
+    // Merge the middle parts into benefits
+    const middleParts = standardResult.slice(5, standardResult.length - 2);
+    result[5] = middleParts.join(', '); // benefits
+    
+    // The last two parts should be source and notes
+    if (standardResult.length >= 7) {
+      result[6] = standardResult[standardResult.length - 2]; // source
+      result[7] = standardResult[standardResult.length - 1]; // notes
     }
+    
+    console.log('Merged result:', result);
+    return result;
   }
   
   return standardResult;
