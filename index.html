@@ -252,11 +252,11 @@ body {
 
 /* Focus Session Panel Styles */
 .focus-block {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--accent);
-  border-radius: 4px;
-  background: transparent;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
   transition: all 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
   overflow: hidden;
@@ -265,8 +265,21 @@ body {
 .focus-block.filled {
   background: var(--ok);
   border-color: var(--ok);
-  box-shadow: 0 0 12px rgba(121, 221, 148, 0.4);
+  box-shadow: 0 0 8px rgba(121, 221, 148, 0.4);
   transform: scale(1.05);
+}
+
+.focus-block.queued {
+  background: #ffbe5a;
+  border-color: #ffbe5a;
+  box-shadow: 0 0 8px rgba(255, 190, 90, 0.4);
+}
+
+.focus-block.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(90, 208, 255, 0.6);
+  animation: pulse 1s infinite;
 }
 
 .focus-block.filled::before {
@@ -278,6 +291,38 @@ body {
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   animation: fillSweep 600ms ease-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes rainbowCycle {
+  0% { background: #ff0000; }
+  16% { background: #ff8000; }
+  33% { background: #ffff00; }
+  50% { background: #00ff00; }
+  66% { background: #0080ff; }
+  83% { background: #8000ff; }
+  100% { background: #ff0000; }
+}
+
+@keyframes greenCycle {
+  0% { background: #4ade80; }
+  25% { background: #22c55e; }
+  50% { background: #16a34a; }
+  75% { background: #15803d; }
+  100% { background: #4ade80; }
+}
+
+.rainbow-alert {
+  animation: rainbowCycle 0.5s ease-in-out;
+}
+
+.green-alert {
+  animation: greenCycle 0.8s ease-in-out;
 }
 
 @keyframes fillSweep {
@@ -958,79 +1003,87 @@ progress::-webkit-progress-value {
     </div>
   </div>
   
-  <!-- Compact Focus Session Panel -->
-  <div id="focusSessionPanel" style="display: none; margin: 20px; padding: 16px; background: var(--glass-bg); backdrop-filter: var(--backdrop-blur); border: 1px solid var(--glass-border); border-radius: 12px; box-shadow: var(--shadow-soft);">
+  <!-- Redesigned Focus Session Panel -->
+  <div id="focusSessionPanel" style="display: none; margin: 20px; padding: 20px; background: var(--glass-bg); backdrop-filter: var(--backdrop-blur); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--shadow-soft);">
     
     <!-- Start Day Section -->
     <div id="startDaySection">
-      <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h3 style="color: var(--accent); font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">🎯 Focus Session</h3>
+        <p style="color: var(--muted); font-size: 14px; margin: 0 0 20px 0;">Set your daily focus goal and start tracking your progress</p>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="color: var(--accent); font-size: 16px; font-weight: 600;">🎯 Focus Session</span>
-          <label style="color: var(--muted); font-size: 13px;">Goal:</label>
-          <input type="number" id="focusGoalInput" value="12" min="1" max="24" style="width: 60px; height: 32px; text-align: center; font-size: 13px;">
-          <span style="color: var(--muted); font-size: 13px;">blocks</span>
+          <label style="color: var(--text); font-size: 16px; font-weight: 500;">Daily Goal:</label>
+          <select id="dailyGoalSelect" style="height: 40px; font-size: 16px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 120px;">
+            <option value="2">2 hours (8 blocks)</option>
+            <option value="4" selected>4 hours (16 blocks)</option>
+            <option value="6">6 hours (24 blocks)</option>
+            <option value="8">8 hours (32 blocks)</option>
+            <option value="10">10 hours (40 blocks)</option>
+            <option value="12">12 hours (48 blocks)</option>
+          </select>
         </div>
-        <button onclick="startDay()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 14px;">Start Day</button>
+        
+        <button onclick="startNewFocusDay()" class="modern-button primary" style="height: 44px; padding: 0 24px; font-size: 16px; font-weight: 600;">Start Focus Day</button>
       </div>
     </div>
     
     <!-- Active Session Section -->
     <div id="activeSessionSection" style="display: none;">
-      <!-- Top Row: Session Info -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="color: var(--accent); font-size: 18px; font-weight: 600; margin: 0;">🎯 Focus Session</h3>
+          <p style="color: var(--muted); font-size: 12px; margin: 4px 0 0 0;">Started: <span id="sessionStartTime">--:--</span></p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="resetFocusProgress()" class="modern-button secondary" style="height: 32px; padding: 0 12px; font-size: 12px;">Reset Progress</button>
+          <button onclick="endFocusDay()" class="modern-button" style="height: 32px; padding: 0 12px; font-size: 12px; background: var(--warn);">End Day</button>
+        </div>
+      </div>
+      
+      <!-- Progress Blocks -->
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="color: var(--text); font-size: 14px; font-weight: 500;">Progress</span>
+          <span id="progressText" style="color: var(--muted); font-size: 12px;">0/16 blocks completed</span>
+        </div>
+        <div id="blockGrid" style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; padding: 12px; background: rgba(0,0,0,0.1); border-radius: 8px; min-height: 40px;"></div>
+      </div>
+      
+      <!-- Chunk Controls -->
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Chunk Selection -->
         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <span style="color: var(--accent); font-size: 15px; font-weight: 600;">🎯 Focus Session</span>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="color: var(--muted); font-size: 11px;">Started:</span>
-            <span id="sessionStartTime" style="font-weight: 600; color: var(--text); font-size: 12px;">10:00 AM</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="color: var(--muted); font-size: 11px;">Off-task:</span>
-            <span id="offTaskTime" style="font-weight: 600; color: var(--warn); font-size: 12px;">0m</span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Block Grid Row -->
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-        <span style="color: var(--muted); font-size: 11px; flex-shrink: 0;">Progress:</span>
-        <div id="blockGrid" style="display: flex; gap: 3px; flex-wrap: wrap; flex: 1; min-width: 0;"></div>
-      </div>
-      
-      <!-- Controls Row -->
-      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <!-- Chunk Duration -->
-        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-          <span style="color: var(--muted); font-size: 11px;">Chunk:</span>
-          <select id="chunkDuration" style="height: 28px; font-size: 12px; width: 60px;">
-            <option value="30">30m</option>
-            <option value="60">60m</option>
-            <option value="90" selected>90m</option>
-            <option value="120">120m</option>
+          <span style="color: var(--text); font-size: 14px; font-weight: 500;">Next Chunk:</span>
+          <select id="chunkDuration" style="height: 36px; font-size: 14px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 100px;">
+            <option value="15">15 min (1 block)</option>
+            <option value="30">30 min (2 blocks)</option>
+            <option value="45" selected>45 min (3 blocks)</option>
+            <option value="60">60 min (4 blocks)</option>
+            <option value="90">90 min (6 blocks)</option>
+            <option value="120">120 min (8 blocks)</option>
           </select>
+          <button id="startChunkBtn" onclick="startFocusChunk()" class="modern-button primary" style="height: 36px; padding: 0 16px; font-size: 14px;">Start Chunk</button>
         </div>
         
-        <!-- Chunk Control Button -->
-        <button id="chunkControlBtn" onclick="startChunk()" class="modern-button primary" style="height: 28px; padding: 0 8px; font-size: 12px; flex-shrink: 0;">Start</button>
-        
-        <!-- Timer Display -->
-        <div id="timerSection" style="display: none; flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <div id="chunkTimer" class="mono" style="font-size: 16px; font-weight: 600; color: var(--accent);">00:00</div>
-            <button id="pauseBtn" onclick="pauseChunk()" class="modern-button secondary" style="height: 24px; padding: 0 6px; font-size: 11px;">⏸️</button>
-            <button id="finishBtn" onclick="finishChunk()" class="modern-button primary" style="height: 24px; padding: 0 6px; font-size: 11px;">✓</button>
+        <!-- Active Chunk Display -->
+        <div id="activeChunkSection" style="display: none; padding: 16px; background: rgba(90, 208, 255, 0.1); border: 1px solid rgba(90, 208, 255, 0.3); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <span style="color: var(--accent); font-size: 16px; font-weight: 600;">Chunk Active</span>
+              <div id="chunkProgress" style="color: var(--muted); font-size: 12px; margin-top: 2px;">0/3 blocks completed</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="pauseChunkBtn" onclick="pauseFocusChunk()" class="modern-button secondary" style="height: 28px; padding: 0 8px; font-size: 12px;">⏸️ Pause</button>
+              <button id="finishChunkBtn" onclick="finishFocusChunk()" class="modern-button" style="height: 28px; padding: 0 8px; font-size: 12px; background: var(--ok);">✓ Finish</button>
+            </div>
           </div>
-        </div>
-        
-        <!-- ON/OFF Task Toggle -->
-        <div id="taskToggleSection" style="display: none; flex-shrink: 0;">
-          <div style="display: flex; gap: 6px;">
-            <button id="onTaskBtn" onclick="setTaskMode('on-task')" class="modern-button" style="height: 28px; padding: 0 8px; font-size: 11px; font-weight: 600; background: var(--ok); color: white; border: none;">ON</button>
-            <button id="offTaskBtn" onclick="setTaskMode('off-task')" class="modern-button" style="height: 28px; padding: 0 8px; font-size: 11px; font-weight: 600; background: var(--muted); color: white; border: none;">OFF</button>
-          </div>
+          <div id="chunkTimer" class="mono" style="font-size: 24px; font-weight: 600; color: var(--accent); text-align: center;">00:00</div>
         </div>
       </div>
-      
     </div>
   </div>
   
@@ -1562,7 +1615,8 @@ progress::-webkit-progress-value {
       
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button onclick="initializeSpreadsheet()" class="modern-button primary" title="Create a new Google Sheet for your job applications" style="height: 36px; padding: 0 16px; font-size: 13px;">Create Spreadsheet</button>
-        <button onclick="syncToGoogleSheets()" class="modern-button secondary" title="Sync all jobs to your Google Sheet" style="height: 36px; padding: 0 16px; font-size: 13px;">Sync Now</button>
+        <button onclick="syncToGoogleSheets()" class="modern-button secondary" title="Sync all jobs and contacts to your Google Sheet" style="height: 36px; padding: 0 16px; font-size: 13px;">Sync All</button>
+        <button onclick="syncContactsToGoogleSheets()" class="modern-button secondary" title="Sync only contacts to Google Sheets" style="height: 36px; padding: 0 16px; font-size: 13px;">Sync Contacts</button>
         <button onclick="openSpreadsheet()" id="openSheetBtn" class="modern-button secondary" title="Open your spreadsheet in a new tab" style="height: 36px; padding: 0 16px; font-size: 13px; display: none;">Open Sheet</button>
         <button onclick="resetSpreadsheet()" class="modern-button secondary" title="Reset and create a new sheet" style="height: 36px; padding: 0 16px; font-size: 13px; color: var(--warn);">Reset Sheet Connection</button>
       </div>
@@ -1654,6 +1708,7 @@ Text to parse:</textarea>
     <h3 style="margin-bottom: 16px;">Data Management</h3>
     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
       <button onclick="exportData()" class="secondary">Export Data</button>
+      <button onclick="exportToICal()" class="secondary">📅 Export to iCal</button>
       <button onclick="importData()" class="secondary">Import Data</button>
       <button onclick="confirmReset()" class="danger">Reset All Data</button>
     </div>
@@ -2057,8 +2112,8 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.4.1'; // Fix CSV parsing and application status updates
-const APP_BUILD_DATE = '2025-10-08';
+const APP_VERSION = '3.4.2'; // Focus session redesign with 15-minute blocks
+const APP_BUILD_DATE = '2025-01-08';
 
 // State
 let state = {
@@ -2277,6 +2332,73 @@ function formatDateTime(isoString, forSpreadsheet = false) {
     minute: '2-digit',
     hour12: true 
   });
+}
+
+function isValidUrl(url) {
+  if (!url || url.trim() === '') return { isValid: true, message: '' };
+  
+  try {
+    // Basic URL validation
+    const urlObj = new URL(url);
+    
+    // Check for valid protocols
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      return { isValid: false, message: 'URL must start with http:// or https://' };
+    }
+    
+    // Check for obviously invalid URLs (like the cchute.netlify.app issue)
+    if (urlObj.hostname.includes('cchute.netlify.app') || 
+        urlObj.hostname.includes('career-chute') ||
+        urlObj.pathname.startsWith('/$')) {
+      return { isValid: false, message: 'This appears to be an invalid placeholder URL. Please enter the actual job posting URL.' };
+    }
+    
+    // Check for common job board domains
+    const validJobDomains = [
+      'linkedin.com', 'indeed.com', 'glassdoor.com', 'ziprecruiter.com',
+      'monster.com', 'careerbuilder.com', 'dice.com', 'angel.co',
+      'greenhouse.io', 'lever.co', 'workday.com', 'bamboohr.com',
+      'smartrecruiters.com', 'jobvite.com', 'icims.com', 'jobs.com',
+      'remote.co', 'weworkremotely.com', 'flexjobs.com', 'upwork.com',
+      'github.com', 'stackoverflow.com', 'angel.co', 'crunchbase.com'
+    ];
+    
+    const hostname = urlObj.hostname.toLowerCase();
+    const hasValidDomain = validJobDomains.some(domain => 
+      hostname === domain || hostname.endsWith('.' + domain)
+    );
+    
+    if (!hasValidDomain) {
+      // Allow company websites (not subdomains of known job boards)
+      const isCompanySite = !validJobDomains.some(domain => hostname.includes(domain));
+      if (isCompanySite) {
+        return { isValid: true, message: 'Company website detected' };
+      }
+    }
+    
+    return { isValid: true, message: 'Valid job posting URL' };
+    
+  } catch (error) {
+    return { isValid: false, message: 'Invalid URL format' };
+  }
+}
+
+function promptForValidUrl(currentUrl = '', company = '', role = '') {
+  const prompt = `Please enter a valid job posting URL for ${company} - ${role}:\n\nCurrent URL: ${currentUrl || 'None'}\n\nThis should be the direct link to the job posting, not a placeholder or redirect URL.`;
+  
+  let newUrl = prompt(prompt);
+  if (newUrl === null) return null; // User cancelled
+  
+  newUrl = newUrl.trim();
+  if (newUrl === '') return ''; // User cleared the URL
+  
+  const validation = isValidUrl(newUrl);
+  if (!validation.isValid) {
+    alert(`Invalid URL: ${validation.message}\n\nPlease try again with a proper job posting URL.`);
+    return promptForValidUrl(newUrl, company, role); // Recursive retry
+  }
+  
+  return newUrl;
 }
 
 function generateId() {
@@ -2640,46 +2762,25 @@ function renderFocusPanel() {
     // Update session info
     const currentDay = state.timeBlocking.currentDay;
     document.getElementById('sessionStartTime').textContent = currentDay.startTime;
-    document.getElementById('offTaskTime').textContent = formatMinutes(currentDay.activeChunk?.offTaskTime || 0);
     
     // Render block grid
-    renderBlockGrid();
+    renderNewBlockGrid();
     
     // Handle active chunk timer
     if (currentDay.activeChunk && currentDay.activeChunk.status === 'active') {
       // Restore timer state
       const remainingTime = currentDay.activeChunk.remainingTime;
-      const minutes = Math.floor(remainingTime / 60);
-      const seconds = remainingTime % 60;
-      const timerDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      const elapsed = Math.floor((Date.now() - chunkStartTime - chunkPausedTime) / 1000);
+      const currentRemaining = Math.max(0, remainingTime - elapsed);
       
-      document.getElementById('chunkTimer').textContent = timerDisplay;
-      document.getElementById('timerSection').style.display = 'block';
-      document.getElementById('taskToggleSection').style.display = 'block';
-      document.getElementById('chunkControlBtn').textContent = 'Chunk Active';
-      document.getElementById('chunkControlBtn').disabled = true;
-      
-      // Start timer if not already running
-      if (!chunkTimerInterval) {
-        chunkStartTime = new Date(Date.now() - (currentDay.activeChunk.plannedDuration * 60 - remainingTime) * 1000);
-        startChunkTimer();
+      if (currentRemaining > 0) {
+        document.getElementById('activeChunkSection').style.display = 'block';
+        document.getElementById('startChunkBtn').style.display = 'none';
+        startFocusChunkTimer();
+      } else {
+        // Chunk should have finished
+        finishFocusChunk();
       }
-      
-      updateTimerButtons('active');
-    } else if (currentDay.activeChunk && currentDay.activeChunk.status === 'paused') {
-      // Show paused state
-      const remainingTime = currentDay.activeChunk.remainingTime;
-      const minutes = Math.floor(remainingTime / 60);
-      const seconds = remainingTime % 60;
-      const timerDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      
-      document.getElementById('chunkTimer').textContent = timerDisplay;
-      document.getElementById('timerSection').style.display = 'block';
-      document.getElementById('taskToggleSection').style.display = 'block';
-      document.getElementById('chunkControlBtn').textContent = 'Chunk Paused';
-      document.getElementById('chunkControlBtn').disabled = true;
-      
-      updateTimerButtons('paused');
     }
   }
 }
@@ -2718,6 +2819,331 @@ function startDay() {
   
   // Start new day
   startNewDay();
+}
+
+// New Focus Session Functions
+function startNewFocusDay() {
+  const today = getTodayISO();
+  const goalHours = parseInt(document.getElementById('dailyGoalSelect').value);
+  const goalBlocks = goalHours * 4; // 4 blocks per hour (15 min each)
+  
+  // Initialize time blocking if it doesn't exist
+  if (!state.timeBlocking) {
+    state.timeBlocking = {
+      history: {},
+      achievements: {
+        badges: [],
+        streaks: {
+          workStreak: 0,
+          goalStreak: 0,
+          longestWork: 0,
+          longestGoal: 0,
+          currentWorkStreak: 0,
+          currentGoalStreak: 0
+        }
+      }
+    };
+  }
+  
+  // Create new day
+  state.timeBlocking.currentDay = {
+    date: today,
+    startTime: new Date().toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    }),
+    goalBlocks: goalBlocks,
+    completedBlocks: 0,
+    queuedBlocks: 0,
+    activeChunk: null,
+    chunks: []
+  };
+  
+  saveToFirebase();
+  renderFocusPanel();
+}
+
+function renderNewBlockGrid() {
+  const grid = document.getElementById('blockGrid');
+  const progressText = document.getElementById('progressText');
+  if (!grid || !state.timeBlocking?.currentDay) return;
+  
+  const { goalBlocks, completedBlocks, queuedBlocks } = state.timeBlocking.currentDay;
+  
+  // Update progress text
+  if (progressText) {
+    progressText.textContent = `${completedBlocks}/${goalBlocks} blocks completed`;
+  }
+  
+  grid.innerHTML = '';
+  
+  for (let i = 0; i < goalBlocks; i++) {
+    const block = document.createElement('div');
+    block.className = 'focus-block';
+    block.dataset.index = i;
+    
+    if (i < completedBlocks) {
+      block.classList.add('filled');
+    } else if (i < completedBlocks + queuedBlocks) {
+      block.classList.add('queued');
+    }
+    
+    grid.appendChild(block);
+  }
+}
+
+function startFocusChunk() {
+  if (!state.timeBlocking?.currentDay) return;
+  
+  const duration = parseInt(document.getElementById('chunkDuration').value);
+  const blocks = Math.floor(duration / 15); // 15 minutes per block
+  const now = new Date();
+  
+  // Mark blocks as queued
+  state.timeBlocking.currentDay.queuedBlocks = blocks;
+  
+  // Create active chunk
+  state.timeBlocking.currentDay.activeChunk = {
+    id: 'chunk_' + Date.now(),
+    plannedDuration: duration,
+    blocks: blocks,
+    completedBlocks: 0,
+    startTime: now.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    }),
+    status: 'active',
+    remainingTime: duration * 60 // seconds
+  };
+  
+  // Start timer
+  chunkStartTime = now;
+  chunkPausedTime = 0;
+  
+  // Show active chunk section
+  document.getElementById('activeChunkSection').style.display = 'block';
+  document.getElementById('startChunkBtn').style.display = 'none';
+  
+  // Start rainbow alert for chunk start
+  triggerGreenAlert();
+  
+  // Start timer
+  startFocusChunkTimer();
+  
+  // Update UI
+  renderNewBlockGrid();
+  saveToFirebase();
+}
+
+function startFocusChunkTimer() {
+  if (chunkTimerInterval) {
+    clearInterval(chunkTimerInterval);
+  }
+  
+  chunkTimerInterval = setInterval(updateFocusChunkTimer, 1000);
+}
+
+function updateFocusChunkTimer() {
+  if (!state.timeBlocking?.currentDay?.activeChunk) {
+    stopFocusChunkTimer();
+    return;
+  }
+  
+  const activeChunk = state.timeBlocking.currentDay.activeChunk;
+  
+  if (activeChunk.status !== 'active') {
+    return;
+  }
+  
+  // Calculate remaining time
+  const now = Date.now();
+  const elapsed = Math.floor((now - chunkStartTime - chunkPausedTime) / 1000);
+  const remaining = Math.max(0, activeChunk.remainingTime - elapsed);
+  
+  // Update timer display
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const timerDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  document.getElementById('chunkTimer').textContent = timerDisplay;
+  
+  // Update progress
+  const totalElapsed = Math.floor((now - chunkStartTime - chunkPausedTime) / 60); // minutes
+  const blocksCompleted = Math.floor(totalElapsed / 15);
+  const currentBlockProgress = (totalElapsed % 15) / 15;
+  
+  // Update chunk progress
+  document.getElementById('chunkProgress').textContent = `${blocksCompleted}/${activeChunk.blocks} blocks completed`;
+  
+  // Update block grid
+  updateBlockProgress(blocksCompleted, currentBlockProgress);
+  
+  // Check if chunk is complete
+  if (remaining <= 0) {
+    finishFocusChunk();
+  }
+}
+
+function updateBlockProgress(completedBlocks, currentBlockProgress) {
+  const grid = document.getElementById('blockGrid');
+  if (!grid) return;
+  
+  const blocks = grid.querySelectorAll('.focus-block');
+  const { goalBlocks, completedBlocks: totalCompleted } = state.timeBlocking.currentDay;
+  
+  blocks.forEach((block, index) => {
+    const blockIndex = parseInt(block.dataset.index);
+    
+    // Remove all classes
+    block.classList.remove('filled', 'queued', 'active');
+    
+    if (blockIndex < totalCompleted) {
+      block.classList.add('filled');
+    } else if (blockIndex === totalCompleted && currentBlockProgress > 0) {
+      block.classList.add('active');
+    } else if (blockIndex < totalCompleted + state.timeBlocking.currentDay.queuedBlocks) {
+      block.classList.add('queued');
+    }
+  });
+}
+
+function pauseFocusChunk() {
+  if (!state.timeBlocking?.currentDay?.activeChunk) return;
+  
+  const activeChunk = state.timeBlocking.currentDay.activeChunk;
+  
+  if (activeChunk.status === 'active') {
+    activeChunk.status = 'paused';
+    chunkPausedTime = Date.now();
+    stopFocusChunkTimer();
+    
+    document.getElementById('pauseChunkBtn').textContent = '▶️ Resume';
+    document.getElementById('pauseChunkBtn').onclick = resumeFocusChunk;
+  }
+  
+  saveToFirebase();
+}
+
+function resumeFocusChunk() {
+  if (!state.timeBlocking?.currentDay?.activeChunk) return;
+  
+  const activeChunk = state.timeBlocking.currentDay.activeChunk;
+  
+  if (activeChunk.status === 'paused') {
+    activeChunk.status = 'active';
+    chunkPausedTime = 0;
+    startFocusChunkTimer();
+    
+    document.getElementById('pauseChunkBtn').textContent = '⏸️ Pause';
+    document.getElementById('pauseChunkBtn').onclick = pauseFocusChunk;
+  }
+  
+  saveToFirebase();
+}
+
+function finishFocusChunk() {
+  if (!state.timeBlocking?.currentDay?.activeChunk) return;
+  
+  const activeChunk = state.timeBlocking.currentDay.activeChunk;
+  const now = new Date();
+  
+  // Calculate final elapsed time
+  const totalElapsed = Math.floor((now - chunkStartTime - chunkPausedTime) / 60); // minutes
+  const blocksCompleted = Math.floor(totalElapsed / 15);
+  
+  // Update completed blocks
+  state.timeBlocking.currentDay.completedBlocks += blocksCompleted;
+  state.timeBlocking.currentDay.queuedBlocks = 0;
+  
+  // Add to chunks history
+  state.timeBlocking.currentDay.chunks.push({
+    ...activeChunk,
+    completedAt: now.toISOString(),
+    actualDuration: totalElapsed
+  });
+  
+  // Clear active chunk
+  state.timeBlocking.currentDay.activeChunk = null;
+  
+  // Hide active chunk section
+  document.getElementById('activeChunkSection').style.display = 'none';
+  document.getElementById('startChunkBtn').style.display = 'inline-block';
+  
+  // Stop timer
+  stopFocusChunkTimer();
+  
+  // Trigger rainbow alert for completion
+  triggerRainbowAlert();
+  
+  // Update UI
+  renderNewBlockGrid();
+  saveToFirebase();
+  
+  // Check if daily goal is achieved
+  if (state.timeBlocking.currentDay.completedBlocks >= state.timeBlocking.currentDay.goalBlocks) {
+    setTimeout(() => {
+      alert('🎉 Daily focus goal achieved! Great work!');
+    }, 1000);
+  }
+}
+
+function stopFocusChunkTimer() {
+  if (chunkTimerInterval) {
+    clearInterval(chunkTimerInterval);
+    chunkTimerInterval = null;
+  }
+}
+
+function resetFocusProgress() {
+  if (!confirm('Are you sure you want to reset your progress for today?')) return;
+  
+  if (state.timeBlocking?.currentDay) {
+    state.timeBlocking.currentDay.completedBlocks = 0;
+    state.timeBlocking.currentDay.queuedBlocks = 0;
+    state.timeBlocking.currentDay.activeChunk = null;
+    
+    // Stop any active timer
+    stopFocusChunkTimer();
+    
+    // Update UI
+    renderNewBlockGrid();
+    document.getElementById('activeChunkSection').style.display = 'none';
+    document.getElementById('startChunkBtn').style.display = 'inline-block';
+    
+    saveToFirebase();
+  }
+}
+
+function endFocusDay() {
+  if (!confirm('Are you sure you want to end your focus day?')) return;
+  
+  // Save current day to history
+  if (state.timeBlocking?.currentDay) {
+    const today = getTodayISO();
+    state.timeBlocking.history[today] = { ...state.timeBlocking.currentDay };
+    state.timeBlocking.currentDay = null;
+    
+    // Stop any active timer
+    stopFocusChunkTimer();
+    
+    saveToFirebase();
+    renderFocusPanel();
+  }
+}
+
+function triggerRainbowAlert() {
+  document.body.classList.add('rainbow-alert');
+  setTimeout(() => {
+    document.body.classList.remove('rainbow-alert');
+  }, 500);
+}
+
+function triggerGreenAlert() {
+  document.body.classList.add('green-alert');
+  setTimeout(() => {
+    document.body.classList.remove('green-alert');
+  }, 800);
 }
 
 function renderBlockGrid() {
@@ -3658,9 +4084,47 @@ function saveFocusUrl() {
   if (!(task.type === 'application' || task.type === 'tailoring') || !task.refId) return;
   const app = state.applications.find(a => a.id === task.refId);
   if (!app) return;
-  const url = document.getElementById('focusAppUrl').value.trim();
+  let url = document.getElementById('focusAppUrl').value.trim();
+  
+  // Validate URL if provided
+  if (url) {
+    const validation = isValidUrl(url);
+    if (!validation.isValid) {
+      const newUrl = promptForValidUrl(url, app.company, app.role);
+      if (newUrl === null) return; // User cancelled
+      url = newUrl;
+      // Update the input field with the corrected URL
+      document.getElementById('focusAppUrl').value = url;
+    }
+  }
+  
   app.url = url;
   saveToFirebase();
+}
+
+function updateFocusSessionUI() {
+  // Only update if currently in a focus session
+  if (!state.currentTask || !state.focusStartTime) return;
+  
+  const detail = getTaskDetail(state.currentTask);
+  const criteria = getCompletionCriteria(state.currentTask);
+  
+  // Update the focus session UI elements
+  const focusTitle = document.getElementById('focusTitle');
+  const focusDescription = document.getElementById('focusDescription');
+  const focusCriteria = document.getElementById('focusCriteria');
+  
+  if (focusTitle) focusTitle.textContent = detail.title;
+  if (focusDescription) focusDescription.textContent = detail.subtitle;
+  if (focusCriteria) focusCriteria.textContent = criteria;
+  
+  // Update URL field if it's an application/tailoring task
+  const app = (state.currentTask.type === 'application' || state.currentTask.type === 'tailoring') && state.currentTask.refId ? 
+              state.applications.find(a => a.id === state.currentTask.refId) : null;
+  const focusAppUrl = document.getElementById('focusAppUrl');
+  if (app && focusAppUrl) {
+    focusAppUrl.value = app.url || '';
+  }
 }
 
 function switchFocusPair() {
@@ -4017,7 +4481,7 @@ function renderPlanScreen() {
           </div>
           <div class="list-item-meta">
             ${app.deadline ? `Deadline: ${formatDate(app.deadline)}` : 'No deadline'}
-            ${app.url ? ` • <a href="${app.url}" target="_blank" style="color: var(--accent);">View posting</a>` : ''}
+            ${app.url ? ` • <a href="#" onclick="openJobUrl('${app.id}'); return false;" style="color: var(--accent);">View posting</a>` : ''}
           </div>
           ${app.notes ? `<div style="margin-top: 8px; font-size: 14px;">${app.notes}</div>` : ''}
         </div>
@@ -5312,15 +5776,31 @@ function openEditModal(type, entity) {
 function saveEditedApplication(appId) {
   const app = state.applications.find(a => a.id === appId);
   if (!app) return;
+  
   app.company = document.getElementById('newAppCompany').value.trim();
   app.role = document.getElementById('newAppRole').value.trim();
-  app.url = document.getElementById('newAppUrl').value.trim();
+  let url = document.getElementById('newAppUrl').value.trim();
   app.deadline = document.getElementById('newAppDeadline').value || null;
   app.notes = document.getElementById('newAppNotes').value.trim();
+  
+  // Validate URL if provided
+  if (url) {
+    const validation = isValidUrl(url);
+    if (!validation.isValid) {
+      const newUrl = promptForValidUrl(url, app.company, app.role);
+      if (newUrl === null) return; // User cancelled
+      url = newUrl;
+    }
+  }
+  
+  app.url = url;
   saveToFirebase();
   closeModal('addAppModal');
   renderPlanScreen();
   renderTodayTasks();
+  
+  // Update focus session UI if currently focused on this application
+  updateFocusSessionUI();
 }
 
 function saveEditedContact(contactId) {
@@ -5334,6 +5814,9 @@ function saveEditedContact(contactId) {
   closeModal('addContactModal');
   renderPlanScreen();
   renderTodayTasks();
+  
+  // Update focus session UI if currently focused on this contact
+  updateFocusSessionUI();
 }
 
 function saveEditedEvent(eventId) {
@@ -5349,18 +5832,31 @@ function saveEditedEvent(eventId) {
   closeModal('addEventModal');
   renderPlanScreen();
   renderTodayTasks();
+  
+  // Update focus session UI if currently focused on this event
+  updateFocusSessionUI();
 }
 
 function addApplication() {
   const company = document.getElementById('newAppCompany').value.trim();
   const role = document.getElementById('newAppRole').value.trim();
-  const url = document.getElementById('newAppUrl').value.trim();
+  let url = document.getElementById('newAppUrl').value.trim();
   const deadline = document.getElementById('newAppDeadline').value;
   const notes = document.getElementById('newAppNotes').value.trim();
   
   if (!company || !role) {
     alert('Please fill in company and role');
     return;
+  }
+  
+  // Validate URL if provided
+  if (url) {
+    const validation = isValidUrl(url);
+    if (!validation.isValid) {
+      const newUrl = promptForValidUrl(url, company, role);
+      if (newUrl === null) return; // User cancelled
+      url = newUrl;
+    }
   }
   
   const app = {
@@ -6442,11 +6938,19 @@ async function syncToGoogleSheets() {
     }
     
     // Sync both jobs and contacts
+    console.log('Syncing jobs to Google Sheets...');
     await syncJobsToGoogleSheets();
+    
+    console.log('Syncing contacts to Google Sheets...');
     await syncContactsToGoogleSheets();
     
     console.log('✅ Synced all data to Google Sheets');
     updateSheetsUI();
+    
+    // Show success message with details
+    const jobCount = state.applications.filter(app => app.status !== 'queued').length;
+    const contactCount = state.contacts.length;
+    alert(`✅ Synced to Google Sheets!\n\n📝 Jobs: ${jobCount} applications\n👥 Contacts: ${contactCount} networking contacts\n\nCheck your spreadsheet for the "Networking Contacts" tab.`);
   } catch (error) {
     console.error('Error syncing to Google Sheets:', error);
     alert('Failed to sync: ' + (error.result?.error?.message || error.message));
@@ -6461,7 +6965,8 @@ async function syncJobsToGoogleSheets() {
     console.log('No pipeline jobs to sync');
     return;
   }
-    
+  
+  try {
     // Read existing sheet data to find rows by ID
     const existingData = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: state.sheets.spreadsheetId,
@@ -6537,23 +7042,30 @@ async function syncJobsToGoogleSheets() {
 
 async function syncContactsToGoogleSheets() {
   if (!state.gmail.connected) {
+    console.log('Gmail not connected, skipping contacts sync');
     return;
   }
   
   try {
+    console.log('Starting contacts sync to Google Sheets...');
+    
     // Initialize spreadsheet if needed
     if (!state.sheets.spreadsheetId) {
+      console.log('No spreadsheet ID, initializing...');
       await initializeSpreadsheet();
     }
     
+    console.log('Getting spreadsheet info...');
     // Create Contacts sheet if it doesn't exist
     const spreadsheet = await gapi.client.sheets.spreadsheets.get({
       spreadsheetId: state.sheets.spreadsheetId
     });
     
     const hasContactsSheet = spreadsheet.result.sheets.some(s => s.properties.title === 'Networking Contacts');
+    console.log('Has contacts sheet:', hasContactsSheet);
     
     if (!hasContactsSheet) {
+      console.log('Creating Networking Contacts sheet...');
       // Add Contacts sheet
       await gapi.client.sheets.spreadsheets.batchUpdate({
         spreadsheetId: state.sheets.spreadsheetId,
@@ -6571,6 +7083,7 @@ async function syncContactsToGoogleSheets() {
         }
       });
       
+      console.log('Adding header row...');
       // Add header row
       await gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: state.sheets.spreadsheetId,
@@ -6590,6 +7103,7 @@ async function syncContactsToGoogleSheets() {
       });
     }
     
+    console.log('Preparing contact data...');
     // Prepare contact rows with formatted dates (absolute for spreadsheet)
     const rows = state.contacts.map(contact => [
       contact.name || '',
@@ -6601,7 +7115,10 @@ async function syncContactsToGoogleSheets() {
       contact.notes || ''
     ]);
     
+    console.log('Contact rows prepared:', rows.length);
+    
     if (rows.length > 0) {
+      console.log('Updating spreadsheet with contact data...');
       // Update spreadsheet
       await gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: state.sheets.spreadsheetId,
@@ -6611,11 +7128,50 @@ async function syncContactsToGoogleSheets() {
           values: rows
         }
       });
-    }
+      console.log('✅ Successfully synced', rows.length, 'contacts to Google Sheets');
     
-    console.log('Synced', rows.length, 'contacts to Google Sheets');
+    // Show success message if called directly (not from main sync)
+    if (arguments.callee.caller && arguments.callee.caller.name !== 'syncToGoogleSheets') {
+      alert(`✅ Synced ${rows.length} contacts to Google Sheets!\n\nCheck your spreadsheet for the "Networking Contacts" tab.`);
+    }
+    } else {
+      console.log('No contacts to sync');
+      if (arguments.callee.caller && arguments.callee.caller.name !== 'syncToGoogleSheets') {
+        alert('No contacts to sync. Add some contacts first!');
+      }
+    }
   } catch (error) {
-    console.error('Error syncing contacts to Google Sheets:', error);
+    console.error('❌ Error syncing contacts to Google Sheets:', error);
+    // Re-throw the error so it can be caught by the calling function
+    throw error;
+  }
+}
+
+function openJobUrl(appId) {
+  const app = state.applications.find(a => a.id === appId);
+  if (!app) return;
+  
+  if (!app.url || app.url.trim() === '') {
+    alert('No URL available for this job posting.');
+    return;
+  }
+  
+  const validation = isValidUrl(app.url);
+  if (!validation.isValid) {
+    // Prompt user to fix the URL
+    const newUrl = promptForValidUrl(app.url, app.company, app.role);
+    if (newUrl !== null) {
+      app.url = newUrl;
+      saveToFirebase();
+      renderPlanScreen(); // Refresh the UI
+      
+      if (newUrl) {
+        window.open(newUrl, '_blank');
+      }
+    }
+  } else {
+    // URL is valid, open it
+    window.open(app.url, '_blank');
   }
 }
 
@@ -9479,6 +10035,124 @@ function cleanupAndMigrateUsers() {
   }
 }
 
+function exportToICal() {
+  const applications = state.applications || [];
+  
+  if (applications.length === 0) {
+    alert('No job applications to export');
+    return;
+  }
+  
+  // Generate iCal content
+  let icalContent = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Career Chute//Job Applications//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ];
+  
+  // Add each application as an event
+  applications.forEach(app => {
+    if (!app.company || !app.role) return;
+    
+    // Create event based on application status and dates
+    const eventId = generateId();
+    const now = new Date();
+    const eventDate = app.dateSent ? new Date(app.dateSent) : 
+                     app.addedToPipeline ? new Date(app.addedToPipeline) : 
+                     app.addedToQueue ? new Date(app.addedToQueue) : now;
+    
+    // Format date for iCal (YYYYMMDDTHHMMSSZ)
+    const formatDate = (date) => {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+    
+    // Create summary based on status
+    let summary = `${app.company} - ${app.role}`;
+    let description = `Job Application: ${app.company} - ${app.role}`;
+    
+    if (app.status === 'sent') {
+      summary = `✅ Applied: ${app.company} - ${app.role}`;
+      description = `Application submitted to ${app.company} for ${app.role}`;
+    } else if (app.status === 'interview') {
+      summary = `🎯 Interview: ${app.company} - ${app.role}`;
+      description = `Interview scheduled with ${app.company} for ${app.role}`;
+    } else if (app.status === 'offer') {
+      summary = `🎉 Offer: ${app.company} - ${app.role}`;
+      description = `Job offer received from ${app.company} for ${app.role}`;
+    } else if (app.status === 'rejected') {
+      summary = `❌ Rejected: ${app.company} - ${app.role}`;
+      description = `Application rejected by ${app.company} for ${app.role}`;
+    } else if (app.status === 'pipeline') {
+      summary = `📋 Pipeline: ${app.company} - ${app.role}`;
+      description = `Job application in pipeline - ${app.company} for ${app.role}`;
+    } else if (app.status === 'tailoring') {
+      summary = `✏️ Tailoring: ${app.company} - ${app.role}`;
+      description = `Tailoring resume/cover letter for ${app.company} - ${app.role}`;
+    } else if (app.status === 'ready') {
+      summary = `🚀 Ready: ${app.company} - ${app.role}`;
+      description = `Application ready to submit - ${app.company} for ${app.role}`;
+    } else {
+      summary = `📝 Queued: ${app.company} - ${app.role}`;
+      description = `Job application queued - ${app.company} for ${app.role}`;
+    }
+    
+    // Add additional details
+    if (app.location) description += `\nLocation: ${app.location}`;
+    if (app.salary) description += `\nSalary: ${app.salary}`;
+    if (app.url) description += `\nJob URL: ${app.url}`;
+    if (app.notes) description += `\nNotes: ${app.notes}`;
+    if (app.source) description += `\nSource: ${app.source}`;
+    
+    // Add status-specific dates
+    if (app.dateSent) description += `\nApplied: ${new Date(app.dateSent).toLocaleDateString()}`;
+    if (app.addedToPipeline) description += `\nAdded to Pipeline: ${new Date(app.addedToPipeline).toLocaleDateString()}`;
+    if (app.addedToQueue) description += `\nAdded to Queue: ${new Date(app.addedToQueue).toLocaleDateString()}`;
+    
+    // Create the event
+    icalContent.push(
+      'BEGIN:VEVENT',
+      `UID:${eventId}@career-chute.app`,
+      `DTSTART:${formatDate(eventDate)}`,
+      `DTEND:${formatDate(new Date(eventDate.getTime() + 60 * 60 * 1000))}`, // 1 hour duration
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${description.replace(/\n/g, '\\n')}`,
+      `STATUS:CONFIRMED`,
+      `TRANSP:OPAQUE`,
+      'END:VEVENT'
+    );
+  });
+  
+  icalContent.push('END:VCALENDAR');
+  
+  // Create and download the file
+  const icalString = icalContent.join('\r\n');
+  const blob = new Blob([icalString], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `career-chute-applications-${new Date().toISOString().split('T')[0]}.ics`;
+  link.click();
+  URL.revokeObjectURL(url);
+  
+  // Show success message
+  const successMsg = document.createElement('div');
+  successMsg.style.cssText = `
+    position: fixed; top: 20px; right: 20px; z-index: 10000;
+    background: var(--ok); color: white; padding: 12px 20px;
+    border-radius: 8px; box-shadow: var(--shadow-lift);
+    font-weight: 500; animation: slideIn 0.3s ease-out;
+  `;
+  successMsg.textContent = `📅 Exported ${applications.length} applications to iCal`;
+  document.body.appendChild(successMsg);
+  
+  setTimeout(() => {
+    successMsg.style.animation = 'fadeUp 0.3s ease-out reverse';
+    setTimeout(() => successMsg.remove(), 300);
+  }, 3000);
+}
+
 function exportData() {
   const dataStr = JSON.stringify(state, null, 2);
   const dataBlob = new Blob([dataStr], {type: 'application/json'});
@@ -9544,6 +10218,10 @@ function confirmReset() {
       
       <button onclick="exportData()" style="width: 100%; margin-bottom: 12px;">
         📦 Export All Data (JSON)
+      </button>
+      
+      <button onclick="exportToICal()" style="width: 100%; margin-bottom: 12px;">
+        📅 Export to iCal
       </button>
       
       <button onclick="document.getElementById('import-file').click()" class="secondary" style="width: 100%; margin-bottom: 12px;">

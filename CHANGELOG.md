@@ -4,6 +4,32 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.4.2] - 2025-01-08
+
+### 🎯 NEW: Focus Session Redesign
+- **15-Minute Block System**: Each square represents 15 minutes of focused work
+- **Daily Goal Selection**: Choose 2-12 hours (8-48 blocks) with visual progress
+- **Smart Chunk Management**: Queue multiple chunks with yellow/blue/green visual states
+- **Continuous Timer**: Keeps running after chunk completion, adds green blocks every 15 minutes
+- **Visual Alerts**: 
+  - Green cycle (4 shades) when chunk starts
+  - Rainbow cycle when chunk completes
+  - Background animations visible behind focus modals
+- **Enhanced Controls**: Reset progress, end day, pause/resume chunks
+- **Real-time Progress**: Live updates with "X/Y blocks completed" display
+
+### 🛠️ FIXED: JavaScript Errors
+- **Tab Navigation**: Fixed missing `try` block in `syncJobsToGoogleSheets()` function
+- **Syntax Errors**: Resolved JavaScript errors preventing tab switching
+- **Function References**: All navigation functions now working properly
+
+### 🔧 Technical Details
+- **Block States**: White (not started), Yellow (queued), Blue (active), Green (completed)
+- **Chunk Queueing**: Next chunk blocks marked yellow while current chunk runs
+- **Progressive Filling**: Blocks turn green every 15 minutes automatically
+- **Goal Achievement**: Celebration when daily goal is reached
+- **Flexible Duration**: Choose any chunk duration (15min to 120min)
+
 ## [3.4.1] - 2025-10-08
 
 ### 🛠️ FIXED: CSV Parsing & Application Status
