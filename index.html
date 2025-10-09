@@ -1016,7 +1016,7 @@ progress::-webkit-progress-value {
       <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
         <div style="display: flex; align-items: center; gap: 12px;">
           <label style="color: var(--text); font-size: 16px; font-weight: 500;">Daily Goal:</label>
-          <select id="dailyGoalSelect" style="height: 40px; font-size: 16px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 120px;">
+          <select id="dailyGoalSelect" style="height: 40px; font-size: 16px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 140px;">
             <option value="1">1 hour (4 blocks)</option>
             <option value="2">2 hours (8 blocks)</option>
             <option value="3">3 hours (12 blocks)</option>
@@ -1025,14 +1025,6 @@ progress::-webkit-progress-value {
             <option value="6">6 hours (24 blocks)</option>
             <option value="7">7 hours (28 blocks)</option>
             <option value="8">8 hours (32 blocks)</option>
-            <option value="9">9 hours (36 blocks)</option>
-            <option value="10">10 hours (40 blocks)</option>
-            <option value="11">11 hours (44 blocks)</option>
-            <option value="12">12 hours (48 blocks)</option>
-            <option value="14">14 hours (56 blocks)</option>
-            <option value="16">16 hours (64 blocks)</option>
-            <option value="18">18 hours (72 blocks)</option>
-            <option value="20">20 hours (80 blocks)</option>
           </select>
         </div>
         
@@ -1056,7 +1048,7 @@ progress::-webkit-progress-value {
       <!-- Daily Goal Selector -->
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
         <label style="color: var(--text); font-size: 14px; font-weight: 500;">Daily Goal:</label>
-        <select id="activeDailyGoalSelect" onchange="updateDailyGoal()" style="height: 32px; font-size: 12px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 100px;">
+        <select id="activeDailyGoalSelect" onchange="updateDailyGoal()" style="height: 32px; font-size: 12px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 120px;">
           <option value="1">1h (4)</option>
           <option value="2">2h (8)</option>
           <option value="3">3h (12)</option>
@@ -1065,14 +1057,6 @@ progress::-webkit-progress-value {
           <option value="6">6h (24)</option>
           <option value="7">7h (28)</option>
           <option value="8">8h (32)</option>
-          <option value="9">9h (36)</option>
-          <option value="10">10h (40)</option>
-          <option value="11">11h (44)</option>
-          <option value="12">12h (48)</option>
-          <option value="14">14h (56)</option>
-          <option value="16">16h (64)</option>
-          <option value="18">18h (72)</option>
-          <option value="20">20h (80)</option>
         </select>
       </div>
       
@@ -1091,7 +1075,7 @@ progress::-webkit-progress-value {
         <div style="display: flex; flex-direction: column; gap: 6px;">
           <span style="color: var(--text); font-size: 12px; font-weight: 500;">Next Chunk:</span>
           <div style="display: flex; gap: 6px;">
-            <select id="chunkDuration" style="height: 28px; font-size: 12px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--text); flex: 1;">
+            <select id="chunkDuration" style="height: 28px; font-size: 12px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 100px;">
               <option value="15">15m (1)</option>
               <option value="30">30m (2)</option>
               <option value="45" selected>45m (3)</option>
@@ -1099,16 +1083,15 @@ progress::-webkit-progress-value {
               <option value="90">90m (6)</option>
               <option value="120">120m (8)</option>
             </select>
-            <button id="startChunkBtn" onclick="startFocusChunk()" class="modern-button primary" style="height: 28px; padding: 0 8px; font-size: 10px;">Start</button>
+            <button id="startChunkBtn" onclick="startFocusChunk()" class="modern-button primary" style="height: 28px; padding: 0 8px; font-size: 10px; flex: 1;">Start</button>
           </div>
         </div>
         
         <!-- Quick Actions -->
         <div style="display: flex; flex-direction: column; gap: 6px;">
-          <span style="color: var(--text); font-size: 12px; font-weight: 500;">Actions:</span>
-          <div style="display: flex; gap: 6px;">
-            <button onclick="resetFocusProgress()" class="modern-button secondary" style="height: 28px; padding: 0 8px; font-size: 10px;">Reset</button>
-            <button onclick="endFocusDay()" class="modern-button" style="height: 28px; padding: 0 8px; font-size: 10px; background: var(--warn);">End Day</button>
+          <div style="display: flex; gap: 4px;">
+            <button onclick="resetFocusProgress()" class="modern-button secondary" style="height: 28px; padding: 0 6px; font-size: 10px; flex: 1;">Reset</button>
+            <button onclick="endFocusDay()" class="modern-button" style="height: 28px; padding: 0 6px; font-size: 10px; background: var(--warn); flex: 1;">End Day</button>
           </div>
         </div>
         
@@ -2161,9 +2144,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.4.5'; // Focus session improvements, mobile fixes, and UI enhancements
+const APP_VERSION = '3.4.6'; // Focus session mobile fixes and daily goal limits
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 17:15:00';
+const APP_DEPLOY_TIME = '2025-01-08 18:00:00';
 
 // State
 let state = {
