@@ -2252,9 +2252,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.5.8'; // Visual color palette and bug fixes
+const APP_VERSION = '3.5.9'; // Massive color palette with grouped organization
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 22:00:00';
+const APP_DEPLOY_TIME = '2025-01-08 22:15:00';
 
 // State
 let state = {
@@ -2714,8 +2714,109 @@ function changeColorTheme() {
 
 // Styling Center Functions
 const availableColors = [
+  // Original palette
   '#ffffff', '#72cc99', '#f6f4ed', '#e7f1fd', '#fefefe', '#fcf9f2', '#fdfdfd',
-  '#fefbf4', '#fefcf4', '#fcfcfc', '#fbfbfb', '#fafafa'
+  '#fefbf4', '#fefcf4', '#fcfcfc', '#fbfbfb', '#fafafa',
+  
+  // Neutral/Natural palette
+  '#d8d6d2', '#7d715a', '#e6ded5',
+  
+  // Purple/Burgundy palette
+  '#e6d2ef', '#6c313d',
+  
+  // Ocean blues palette
+  '#137DC2', '#C5E4EA', '#6786B7',
+  
+  // Purple/Sand palette
+  '#312393', '#B0A380',
+  
+  // Blue palette - Sapphire Spirits
+  '#283A6A', '#6D8BF4', '#EFF0F4',
+  
+  // Dark blue/Aqua palette - Cosmopolitan
+  '#1a5877', '#d4e8f1', '#ffffff',
+  
+  // Blue/Cream palette
+  '#6c94dd', '#fdf8e2',
+  
+  // Blue/Periwinkle palette - Louis Vuitton
+  '#3171af', '#b0bedc', '#f5f5f5',
+  
+  // Orange/Blue/Purple gradient
+  '#dd882f', '#3374e0', '#9d5987',
+  
+  // Purple/Mint/Orange gradient
+  '#6d70cd', '#c7d8cd', '#d35a35',
+  
+  // Article Text colors
+  '#bf1922', '#c99383', '#b17a50', '#facf39', '#ffc93c', '#fce38a', '#f7e8d3', '#137dc5', '#112d4e', '#00cfc8',
+  
+  // Ethereal pastel swirl
+  '#69e3fa', '#fae64d', '#f0b8e8',
+  
+  // Professional Life Coach
+  '#F8D673', '#313F57',
+  
+  // POKE Hawaii
+  '#e5cb67', '#292929',
+  
+  // NEWSPLASH
+  '#fcf276', '#fffff9', '#3d3e3f',
+  
+  // Yellow Interior Design
+  '#ceaf41', '#f3e1c4', '#90795e',
+  
+  // Poppy Ceramics
+  '#BC8680', '#995739', '#D1CDC7',
+  
+  // MARBODAL Branding
+  '#b8a695', '#fbf8f5', '#544235',
+  
+  // Baker & Bloom
+  '#7c746a', '#f7e8d3',
+  
+  // ORGANICLE Meditation Retreat
+  '#742E10', '#FAE1B8', '#F3D18D',
+  
+  // TALKA Branding
+  '#EDDEC9', '#331922',
+  
+  // CITYPULSE Tours & Guides
+  '#e33324', '#660000', '#edf8ff',
+  
+  // DEON LIBRA
+  '#fef7e8', '#c5362f', '#000000',
+  
+  // PREGO Gelateria
+  '#9a2c29', '#d5433e', '#e0d6d1'
+];
+
+const colorGroups = [
+  { name: 'Original', colors: ['#ffffff', '#72cc99', '#f6f4ed', '#e7f1fd', '#fefefe', '#fcf9f2', '#fdfdfd', '#fefbf4', '#fefcf4', '#fcfcfc', '#fbfbfb', '#fafafa'] },
+  { name: 'Neutral/Natural', colors: ['#d8d6d2', '#7d715a', '#e6ded5'] },
+  { name: 'Purple/Burgundy', colors: ['#e6d2ef', '#6c313d'] },
+  { name: 'Ocean Blues', colors: ['#137DC2', '#C5E4EA', '#6786B7'] },
+  { name: 'Purple/Sand', colors: ['#312393', '#B0A380'] },
+  { name: 'Sapphire Spirits', colors: ['#283A6A', '#6D8BF4', '#EFF0F4'] },
+  { name: 'Cosmopolitan', colors: ['#1a5877', '#d4e8f1', '#ffffff'] },
+  { name: 'Blue/Cream', colors: ['#6c94dd', '#fdf8e2'] },
+  { name: 'Louis Vuitton', colors: ['#3171af', '#b0bedc', '#f5f5f5'] },
+  { name: 'Orange/Blue/Purple', colors: ['#dd882f', '#3374e0', '#9d5987'] },
+  { name: 'Purple/Mint/Orange', colors: ['#6d70cd', '#c7d8cd', '#d35a35'] },
+  { name: 'Article Colors', colors: ['#bf1922', '#c99383', '#b17a50', '#facf39', '#ffc93c', '#fce38a', '#f7e8d3', '#137dc5', '#112d4e', '#00cfc8'] },
+  { name: 'Ethereal Pastel', colors: ['#69e3fa', '#fae64d', '#f0b8e8'] },
+  { name: 'Professional', colors: ['#F8D673', '#313F57'] },
+  { name: 'POKE Hawaii', colors: ['#e5cb67', '#292929'] },
+  { name: 'NEWSPLASH', colors: ['#fcf276', '#fffff9', '#3d3e3f'] },
+  { name: 'Yellow Interior', colors: ['#ceaf41', '#f3e1c4', '#90795e'] },
+  { name: 'Poppy Ceramics', colors: ['#BC8680', '#995739', '#D1CDC7'] },
+  { name: 'MARBODAL', colors: ['#b8a695', '#fbf8f5', '#544235'] },
+  { name: 'Baker & Bloom', colors: ['#7c746a', '#f7e8d3'] },
+  { name: 'ORGANICLE', colors: ['#742E10', '#FAE1B8', '#F3D18D'] },
+  { name: 'TALKA', colors: ['#EDDEC9', '#331922'] },
+  { name: 'CITYPULSE', colors: ['#e33324', '#660000', '#edf8ff'] },
+  { name: 'DEON LIBRA', colors: ['#fef7e8', '#c5362f', '#000000'] },
+  { name: 'PREGO', colors: ['#9a2c29', '#d5433e', '#e0d6d1'] }
 ];
 
 const colorElements = [
@@ -2738,25 +2839,41 @@ function addStylingRow() {
   
   const row = document.createElement('div');
   row.id = rowId;
-  row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px; align-items: center;';
+  row.style.cssText = 'margin-bottom: 16px;';
   
-  row.innerHTML = `
-    <select onchange="updateStylingRow('${rowId}')" style="flex: 1; height: 32px; font-size: 12px;">
-      <option value="">Select Element</option>
-      ${colorElements.map(el => `<option value="${el.value}">${el.label}</option>`).join('')}
-    </select>
-    <div class="color-palette" style="flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;">
-      ${availableColors.map(color => `
-        <div onclick="selectColor('${rowId}', '${color}')" 
-             style="width: 24px; height: 24px; background-color: ${color}; border: 2px solid transparent; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;"
-             onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='scale(1.1)'"
-             onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'"
-             title="${color}"></div>
-      `).join('')}
+  // Create element selector
+  const elementSelector = `
+    <div style="margin-bottom: 8px;">
+      <select onchange="updateStylingRow('${rowId}')" style="width: 100%; height: 32px; font-size: 12px;">
+        <option value="">Select Element</option>
+        ${colorElements.map(el => `<option value="${el.value}">${el.label}</option>`).join('')}
+      </select>
     </div>
-    <button onclick="removeStylingRow('${rowId}')" class="modern-button secondary" style="height: 32px; padding: 0 8px; font-size: 12px;">×</button>
   `;
   
+  // Create grouped color palette
+  const colorPalette = colorGroups.map(group => `
+    <div style="margin-bottom: 8px;">
+      <div style="display: flex; gap: 1px; flex-wrap: wrap;">
+        ${group.colors.map(color => `
+          <div onclick="selectColor('${rowId}', '${color}')" 
+               style="width: 16px; height: 16px; background-color: ${color}; border: 1px solid transparent; cursor: pointer; transition: all 0.2s ease;"
+               onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='scale(1.2)'"
+               onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'"
+               title="${color}"></div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+  
+  // Create remove button
+  const removeButton = `
+    <div style="text-align: right; margin-top: 8px;">
+      <button onclick="removeStylingRow('${rowId}')" class="modern-button secondary" style="height: 24px; padding: 0 8px; font-size: 11px;">× Remove</button>
+    </div>
+  `;
+  
+  row.innerHTML = elementSelector + colorPalette + removeButton;
   container.appendChild(row);
 }
 
@@ -2773,9 +2890,9 @@ function selectColor(rowId, color) {
   // Apply color immediately
   document.documentElement.style.setProperty(element, color);
   
-  // Update visual feedback
-  const colorSwatches = row.querySelectorAll('.color-palette > div');
-  colorSwatches.forEach(swatch => {
+  // Update visual feedback - clear all selections first
+  const allSwatches = row.querySelectorAll('div[onclick*="selectColor"]');
+  allSwatches.forEach(swatch => {
     swatch.style.borderColor = 'transparent';
     swatch.style.transform = 'scale(1)';
   });
@@ -2784,7 +2901,7 @@ function selectColor(rowId, color) {
   const selectedSwatch = row.querySelector(`div[onclick*="${color}"]`);
   if (selectedSwatch) {
     selectedSwatch.style.borderColor = 'var(--accent)';
-    selectedSwatch.style.transform = 'scale(1.1)';
+    selectedSwatch.style.transform = 'scale(1.2)';
   }
   
   // Store the selection for theme saving
