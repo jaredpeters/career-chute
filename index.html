@@ -1962,12 +1962,14 @@ Text to parse:</textarea>
     </div>
     <div class="form-group">
       <label>Type</label>
-      <select id="newEventType">
+      <select id="newEventType" onchange="handleEventTypeChange()">
         <option value="fair">Career Fair</option>
         <option value="workshop">Workshop</option>
         <option value="info_session">Info Session</option>
         <option value="networking">Networking Event</option>
         <option value="interview">Interview</option>
+        <option value="volunteer">Volunteer Shift</option>
+        <option value="mindfulness">Mindfulness Event</option>
       </select>
     </div>
     <div class="form-group">
@@ -1977,6 +1979,13 @@ Text to parse:</textarea>
     <div class="form-group">
       <label>Address (Optional)</label>
       <input type="text" id="newEventAddress" placeholder="123 Main St, City, State">
+    </div>
+    <div id="volunteerLocationGroup" class="form-group" style="display: none;">
+      <label>Volunteer Location</label>
+      <select id="newEventVolunteerLocation">
+        <option value="project_angel_food">Project Angel Food - 230 W. Ave 26, Los Angeles, CA 90031</option>
+        <option value="other">Other Location</option>
+      </select>
     </div>
     <div class="form-group">
       <label>Notes</label>
@@ -2142,9 +2151,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.5.1'; // Focus session instructions popup
+const APP_VERSION = '3.5.2'; // Time sync fix and volunteer/mindfulness events
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 19:30:00';
+const APP_DEPLOY_TIME = '2025-01-08 20:00:00';
 
 // State
 let state = {
@@ -2291,7 +2300,10 @@ let chunkPausedTime = 0;
 
 // Date utilities
 function getTodayISO() {
-  return new Date().toISOString().split('T')[0];
+  // Use Los Angeles timezone to match the display
+  const now = new Date();
+  const laTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+  return laTime.toISOString().split('T')[0];
 }
 
 function getMonday() {
@@ -3324,6 +3336,27 @@ function checkTimerConflicts() {
       console.warn('⚠️ Stale focus session timer detected, clearing...');
       state.timeBlocking.currentDay.activeChunk = null;
       saveToFirebase();
+    }
+  }
+}
+
+function handleEventTypeChange() {
+  const eventType = document.getElementById('newEventType').value;
+  const volunteerLocationGroup = document.getElementById('volunteerLocationGroup');
+  const addressField = document.getElementById('newEventAddress');
+  
+  if (eventType === 'volunteer') {
+    volunteerLocationGroup.style.display = 'block';
+    // Auto-fill address if Project Angel Food is selected
+    const volunteerLocation = document.getElementById('newEventVolunteerLocation');
+    if (volunteerLocation.value === 'project_angel_food') {
+      addressField.value = '230 W. Ave 26, Los Angeles, CA 90031';
+    }
+  } else {
+    volunteerLocationGroup.style.display = 'none';
+    // Clear address if not volunteer
+    if (addressField.value === '230 W. Ave 26, Los Angeles, CA 90031') {
+      addressField.value = '';
     }
   }
 }
@@ -5678,6 +5711,7 @@ function showAddEventModal() {
   document.getElementById('newEventLink').value = '';
   document.getElementById('newEventAddress').value = '';
   document.getElementById('newEventNotes').value = '';
+  document.getElementById('volunteerLocationGroup').style.display = 'none';
   
   document.getElementById('addEventModal').classList.add('active');
 }
@@ -5792,6 +5826,8 @@ function toggleQuickAdd() {
             <option value="info_session">Info Session</option>
             <option value="networking">Networking Event</option>
             <option value="interview">Interview</option>
+            <option value="volunteer">Volunteer Shift</option>
+            <option value="mindfulness">Mindfulness Event</option>
           </select>
         </div>
         <div class="form-group">
@@ -6169,6 +6205,7 @@ function addEvent() {
   const notes = document.getElementById('newEventNotes').value.trim();
   const link = document.getElementById('newEventLink').value.trim();
   const address = document.getElementById('newEventAddress').value.trim();
+  const volunteerLocation = document.getElementById('newEventVolunteerLocation').value;
   
   if (!name || !date) {
     alert('Please fill in event name and date');
@@ -6184,6 +6221,7 @@ function addEvent() {
     notes: notes,
     link: link,
     address: address,
+    volunteerLocation: type === 'volunteer' ? volunteerLocation : null,
     attended: false
   };
   
@@ -6198,6 +6236,7 @@ function addEvent() {
   document.getElementById('newEventLink').value = '';
   document.getElementById('newEventAddress').value = '';
   document.getElementById('newEventNotes').value = '';
+  document.getElementById('volunteerLocationGroup').style.display = 'none';
   
   closeModal('addEventModal');
   renderPlanScreen();
