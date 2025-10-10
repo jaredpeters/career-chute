@@ -1640,13 +1640,16 @@ progress::-webkit-progress-value {
     </div>
       <p style="color: var(--muted); font-size: 14px; margin: 0;">Choose your color theme and toggle dark/light mode</p>
     </div>
-    
-    <div class="glass-card" style="padding: 24px;">
-      <h3 style="margin-bottom: 20px; color: var(--accent);">Styling Center</h3>
-      <div id="stylingRows">
-        <!-- Dynamic styling rows will be added here -->
-      </div>
-      <button onclick="addStylingRow()" class="modern-button secondary" style="width: 100%; margin-top: 16px;">+ Add Color Customization</button>
+  </div>
+  
+  <div class="glass-card" style="padding: 24px; margin-top: 20px;">
+    <h3 style="margin-bottom: 20px; color: var(--accent);">Styling Center</h3>
+    <div id="stylingRows">
+      <!-- Dynamic styling rows will be added here -->
+    </div>
+    <div style="display: flex; gap: 12px; margin-top: 16px;">
+      <button onclick="addStylingRow()" class="modern-button secondary" style="flex: 1;">+ Add Color Customization</button>
+      <button onclick="saveAsTheme()" class="modern-button primary" style="flex: 1;">Save as Theme</button>
     </div>
   </div>
   
@@ -2249,9 +2252,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.5.6'; // Styling center for custom color customization
+const APP_VERSION = '3.5.7'; // Enhanced styling center with immediate preview and theme saving
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 21:30:00';
+const APP_DEPLOY_TIME = '2025-01-08 21:45:00';
 
 // State
 let state = {
@@ -2684,9 +2687,24 @@ function changeColorTheme() {
   // Remove existing color theme
   document.documentElement.removeAttribute('data-color-theme');
   
-  // Apply new color theme
+  // Clear custom colors
+  if (state.customColors) {
+    Object.keys(state.customColors).forEach(element => {
+      document.documentElement.style.removeProperty(element);
+    });
+  }
+  
+  // Apply theme
   if (selectedTheme && selectedTheme !== 'default') {
-    document.documentElement.setAttribute('data-color-theme', selectedTheme);
+    if (state.customThemes && state.customThemes[selectedTheme]) {
+      // Apply custom theme
+      Object.entries(state.customThemes[selectedTheme]).forEach(([element, color]) => {
+        document.documentElement.style.setProperty(element, color);
+      });
+    } else {
+      // Apply preset theme
+      document.documentElement.setAttribute('data-color-theme', selectedTheme);
+    }
   }
   
   // Save to state
@@ -2727,7 +2745,7 @@ function addStylingRow() {
       <option value="">Select Element</option>
       ${colorElements.map(el => `<option value="${el.value}">${el.label}</option>`).join('')}
     </select>
-    <select onchange="updateStylingRow('${rowId}')" style="flex: 1; height: 32px; font-size: 12px;">
+    <select onchange="previewColor('${rowId}')" style="flex: 1; height: 32px; font-size: 12px;">
       <option value="">Select Color</option>
       ${availableColors.map(color => `<option value="${color}">${color}</option>`).join('')}
     </select>
@@ -2738,11 +2756,28 @@ function addStylingRow() {
   container.appendChild(row);
 }
 
+function previewColor(rowId) {
+  const row = document.getElementById(rowId);
+  const selects = row.querySelectorAll('select');
+  const element = selects[0].value;
+  const color = selects[1].value;
+  
+  if (element && color) {
+    // Apply preview immediately
+    document.documentElement.style.setProperty(element, color);
+  }
+}
+
 function updateStylingRow(rowId) {
   const row = document.getElementById(rowId);
   const selects = row.querySelectorAll('select');
   const elementSelect = selects[0];
   const colorSelect = selects[1];
+  
+  // If both are selected, apply preview
+  if (elementSelect.value && colorSelect.value) {
+    previewColor(rowId);
+  }
   
   // Enable/disable save button based on selections
   const saveBtn = row.querySelector('button[onclick*="saveStylingRow"]');
@@ -2757,9 +2792,6 @@ function saveStylingRow(rowId) {
   
   if (!element || !color) return;
   
-  // Apply the color immediately
-  document.documentElement.style.setProperty(element, color);
-  
   // Save to state
   if (!state.customColors) state.customColors = {};
   state.customColors[element] = color;
@@ -2773,6 +2805,40 @@ function saveStylingRow(rowId) {
   
   // Add new row below
   addStylingRow();
+}
+
+function saveAsTheme() {
+  if (!state.customColors || Object.keys(state.customColors).length === 0) {
+    alert('Please customize some colors first before saving as theme');
+    return;
+  }
+  
+  // Generate next theme name (A1, C3, E5, A2, C4, E6, etc.)
+  const existingThemes = ['A1', 'C3', 'E5'];
+  let nextTheme = 'A2';
+  let counter = 2;
+  
+  while (existingThemes.includes(nextTheme)) {
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+    const letter = letters[counter % 5];
+    const number = Math.floor(counter / 5) + 1;
+    nextTheme = letter + number;
+    counter++;
+  }
+  
+  // Save the theme
+  if (!state.customThemes) state.customThemes = {};
+  state.customThemes[nextTheme] = { ...state.customColors };
+  saveToFirebase();
+  
+  // Add to dropdown
+  const themeSelect = document.getElementById('colorThemeSelect');
+  const newOption = document.createElement('option');
+  newOption.value = nextTheme;
+  newOption.textContent = `${nextTheme} - Custom Theme`;
+  themeSelect.appendChild(newOption);
+  
+  alert(`Theme saved as ${nextTheme}! You can now select it from the Color Theme dropdown.`);
 }
 
 function removeStylingRow(rowId) {
@@ -6541,6 +6607,20 @@ function renderSettings() {
   const colorThemeSelect = document.getElementById('colorThemeSelect');
   if (colorThemeSelect) {
     colorThemeSelect.value = state.colorTheme || 'A1';
+    
+    // Add custom themes to dropdown
+    if (state.customThemes) {
+      Object.keys(state.customThemes).forEach(themeName => {
+        // Check if option already exists
+        const existingOption = Array.from(colorThemeSelect.options).find(option => option.value === themeName);
+        if (!existingOption) {
+          const newOption = document.createElement('option');
+          newOption.value = themeName;
+          newOption.textContent = `${themeName} - Custom Theme`;
+          colorThemeSelect.appendChild(newOption);
+        }
+      });
+    }
   }
   
   // Apply theme immediately
