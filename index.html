@@ -1640,6 +1640,14 @@ progress::-webkit-progress-value {
     </div>
       <p style="color: var(--muted); font-size: 14px; margin: 0;">Choose your color theme and toggle dark/light mode</p>
     </div>
+    
+    <div class="glass-card" style="padding: 24px;">
+      <h3 style="margin-bottom: 20px; color: var(--accent);">Styling Center</h3>
+      <div id="stylingRows">
+        <!-- Dynamic styling rows will be added here -->
+      </div>
+      <button onclick="addStylingRow()" class="modern-button secondary" style="width: 100%; margin-top: 16px;">+ Add Color Customization</button>
+    </div>
   </div>
   
   <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line);">
@@ -2241,9 +2249,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.5.5'; // Green button colors and theme cleanup
+const APP_VERSION = '3.5.6'; // Styling center for custom color customization
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 21:15:00';
+const APP_DEPLOY_TIME = '2025-01-08 21:30:00';
 
 // State
 let state = {
@@ -2684,6 +2692,110 @@ function changeColorTheme() {
   // Save to state
   state.colorTheme = selectedTheme;
   saveToFirebase();
+}
+
+// Styling Center Functions
+const availableColors = [
+  '#ffffff', '#72cc99', '#f6f4ed', '#e7f1fd', '#fefefe', '#fcf9f2', '#fdfdfd',
+  '#fefbf4', '#fefcf4', '#fcfcfc', '#fbfbfb', '#fafafa'
+];
+
+const colorElements = [
+  { value: '--bg', label: 'Background' },
+  { value: '--text', label: 'Text' },
+  { value: '--muted', label: 'Subtitle/Muted Text' },
+  { value: '--accent', label: 'Primary Button/Accent' },
+  { value: '--ok', label: 'Success/OK' },
+  { value: '--warn', label: 'Warning' },
+  { value: '--bad', label: 'Error/Bad' },
+  { value: '--line', label: 'Borders/Lines' },
+  { value: '--panel', label: 'Panel Background' },
+  { value: '--glass-bg', label: 'Glass Background' },
+  { value: '--glass-border', label: 'Glass Border' }
+];
+
+function addStylingRow() {
+  const container = document.getElementById('stylingRows');
+  const rowId = 'styling-row-' + Date.now();
+  
+  const row = document.createElement('div');
+  row.id = rowId;
+  row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 12px; align-items: center;';
+  
+  row.innerHTML = `
+    <select onchange="updateStylingRow('${rowId}')" style="flex: 1; height: 32px; font-size: 12px;">
+      <option value="">Select Element</option>
+      ${colorElements.map(el => `<option value="${el.value}">${el.label}</option>`).join('')}
+    </select>
+    <select onchange="updateStylingRow('${rowId}')" style="flex: 1; height: 32px; font-size: 12px;">
+      <option value="">Select Color</option>
+      ${availableColors.map(color => `<option value="${color}">${color}</option>`).join('')}
+    </select>
+    <button onclick="saveStylingRow('${rowId}')" class="modern-button primary" style="height: 32px; padding: 0 12px; font-size: 12px;">Save</button>
+    <button onclick="removeStylingRow('${rowId}')" class="modern-button secondary" style="height: 32px; padding: 0 8px; font-size: 12px;">×</button>
+  `;
+  
+  container.appendChild(row);
+}
+
+function updateStylingRow(rowId) {
+  const row = document.getElementById(rowId);
+  const selects = row.querySelectorAll('select');
+  const elementSelect = selects[0];
+  const colorSelect = selects[1];
+  
+  // Enable/disable save button based on selections
+  const saveBtn = row.querySelector('button[onclick*="saveStylingRow"]');
+  saveBtn.disabled = !elementSelect.value || !colorSelect.value;
+}
+
+function saveStylingRow(rowId) {
+  const row = document.getElementById(rowId);
+  const selects = row.querySelectorAll('select');
+  const element = selects[0].value;
+  const color = selects[1].value;
+  
+  if (!element || !color) return;
+  
+  // Apply the color immediately
+  document.documentElement.style.setProperty(element, color);
+  
+  // Save to state
+  if (!state.customColors) state.customColors = {};
+  state.customColors[element] = color;
+  saveToFirebase();
+  
+  // Disable the row after saving
+  selects.forEach(select => select.disabled = true);
+  const saveBtn = row.querySelector('button[onclick*="saveStylingRow"]');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saved';
+  
+  // Add new row below
+  addStylingRow();
+}
+
+function removeStylingRow(rowId) {
+  document.getElementById(rowId).remove();
+}
+
+function loadCustomColors() {
+  if (state.customColors) {
+    Object.entries(state.customColors).forEach(([element, color]) => {
+      document.documentElement.style.setProperty(element, color);
+    });
+  }
+}
+
+function initializeStylingCenter() {
+  const container = document.getElementById('stylingRows');
+  if (!container) return;
+  
+  // Clear existing rows
+  container.innerHTML = '';
+  
+  // Add one initial row
+  addStylingRow();
 }
 
 function initializeWeekAndDay() {
@@ -6438,6 +6550,12 @@ function renderSettings() {
   if (state.colorTheme) {
     document.documentElement.setAttribute('data-color-theme', state.colorTheme);
   }
+  
+  // Load custom colors
+  loadCustomColors();
+  
+  // Initialize styling center
+  initializeStylingCenter();
   
   // Update guardrails settings
   if (state.guardrails) {
