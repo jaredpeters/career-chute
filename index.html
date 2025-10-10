@@ -2252,9 +2252,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.5.7'; // Enhanced styling center with immediate preview and theme saving
+const APP_VERSION = '3.5.8'; // Visual color palette and bug fixes
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 21:45:00';
+const APP_DEPLOY_TIME = '2025-01-08 22:00:00';
 
 // State
 let state = {
@@ -2687,7 +2687,7 @@ function changeColorTheme() {
   // Remove existing color theme
   document.documentElement.removeAttribute('data-color-theme');
   
-  // Clear custom colors
+  // Clear ALL custom colors (including inline styles)
   if (state.customColors) {
     Object.keys(state.customColors).forEach(element => {
       document.documentElement.style.removeProperty(element);
@@ -2745,66 +2745,51 @@ function addStylingRow() {
       <option value="">Select Element</option>
       ${colorElements.map(el => `<option value="${el.value}">${el.label}</option>`).join('')}
     </select>
-    <select onchange="previewColor('${rowId}')" style="flex: 1; height: 32px; font-size: 12px;">
-      <option value="">Select Color</option>
-      ${availableColors.map(color => `<option value="${color}">${color}</option>`).join('')}
-    </select>
-    <button onclick="saveStylingRow('${rowId}')" class="modern-button primary" style="height: 32px; padding: 0 12px; font-size: 12px;">Save</button>
+    <div class="color-palette" style="flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;">
+      ${availableColors.map(color => `
+        <div onclick="selectColor('${rowId}', '${color}')" 
+             style="width: 24px; height: 24px; background-color: ${color}; border: 2px solid transparent; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;"
+             onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='scale(1.1)'"
+             onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'"
+             title="${color}"></div>
+      `).join('')}
+    </div>
     <button onclick="removeStylingRow('${rowId}')" class="modern-button secondary" style="height: 32px; padding: 0 8px; font-size: 12px;">×</button>
   `;
   
   container.appendChild(row);
 }
 
-function previewColor(rowId) {
+function selectColor(rowId, color) {
   const row = document.getElementById(rowId);
-  const selects = row.querySelectorAll('select');
-  const element = selects[0].value;
-  const color = selects[1].value;
+  const elementSelect = row.querySelector('select');
+  const element = elementSelect.value;
   
-  if (element && color) {
-    // Apply preview immediately
-    document.documentElement.style.setProperty(element, color);
-  }
-}
-
-function updateStylingRow(rowId) {
-  const row = document.getElementById(rowId);
-  const selects = row.querySelectorAll('select');
-  const elementSelect = selects[0];
-  const colorSelect = selects[1];
-  
-  // If both are selected, apply preview
-  if (elementSelect.value && colorSelect.value) {
-    previewColor(rowId);
+  if (!element) {
+    alert('Please select an element first');
+    return;
   }
   
-  // Enable/disable save button based on selections
-  const saveBtn = row.querySelector('button[onclick*="saveStylingRow"]');
-  saveBtn.disabled = !elementSelect.value || !colorSelect.value;
-}
-
-function saveStylingRow(rowId) {
-  const row = document.getElementById(rowId);
-  const selects = row.querySelectorAll('select');
-  const element = selects[0].value;
-  const color = selects[1].value;
+  // Apply color immediately
+  document.documentElement.style.setProperty(element, color);
   
-  if (!element || !color) return;
+  // Update visual feedback
+  const colorSwatches = row.querySelectorAll('.color-palette > div');
+  colorSwatches.forEach(swatch => {
+    swatch.style.borderColor = 'transparent';
+    swatch.style.transform = 'scale(1)';
+  });
   
-  // Save to state
+  // Highlight selected color
+  const selectedSwatch = row.querySelector(`div[onclick*="${color}"]`);
+  if (selectedSwatch) {
+    selectedSwatch.style.borderColor = 'var(--accent)';
+    selectedSwatch.style.transform = 'scale(1.1)';
+  }
+  
+  // Store the selection for theme saving
   if (!state.customColors) state.customColors = {};
   state.customColors[element] = color;
-  saveToFirebase();
-  
-  // Disable the row after saving
-  selects.forEach(select => select.disabled = true);
-  const saveBtn = row.querySelector('button[onclick*="saveStylingRow"]');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Saved';
-  
-  // Add new row below
-  addStylingRow();
 }
 
 function saveAsTheme() {
@@ -2846,6 +2831,14 @@ function removeStylingRow(rowId) {
 }
 
 function loadCustomColors() {
+  // Clear any existing custom colors first
+  if (state.customColors) {
+    Object.keys(state.customColors).forEach(element => {
+      document.documentElement.style.removeProperty(element);
+    });
+  }
+  
+  // Then apply saved custom colors
   if (state.customColors) {
     Object.entries(state.customColors).forEach(([element, color]) => {
       document.documentElement.style.setProperty(element, color);
