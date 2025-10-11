@@ -9,25 +9,25 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0e0f11;
-  --panel: rgba(21, 23, 26, 0.8);
-  --text: #f1f3f4;
-  --muted: #9aa3ab;
-  --accent: #5ad0ff;
+  --bg: #0a0b0d;
+  --panel: rgba(18, 20, 23, 0.9);
+  --text: #e8eaed;
+  --muted: #8a8d93;
+  --accent: #72cc99;
   --ok: #79dd94;
   --warn: #ffbe5a;
   --bad: #ff6b6b;
-  --line: rgba(255, 255, 255, 0.05);
+  --line: rgba(255, 255, 255, 0.08);
   --success-glow: rgba(121, 221, 148, 0.4);
   
   /* Modern Design Tokens */
-  --glass-bg: rgba(21, 23, 26, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 20px rgba(90, 208, 255, 0.3);
-  --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.15);
-  --gradient-primary: linear-gradient(135deg, #5ad0ff, #79dd94);
-  --gradient-accent: linear-gradient(135deg, rgba(90, 208, 255, 0.8), rgba(90, 208, 255, 0.4));
+  --glass-bg: rgba(18, 20, 23, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 20px rgba(114, 204, 153, 0.3);
+  --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --gradient-primary: linear-gradient(135deg, #72cc99, #5fb885);
+  --gradient-accent: linear-gradient(135deg, rgba(114, 204, 153, 0.8), rgba(114, 204, 153, 0.4));
   --backdrop-blur: blur(20px);
   --spring-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
   
@@ -3211,37 +3211,7 @@ function editCurrentTheme() {
     return;
   }
   
-  // Show rename dialog
-  const newName = prompt('Enter new name for theme:', selectedTheme);
-  if (newName && newName !== selectedTheme && newName.trim()) {
-    const trimmedName = newName.trim();
-    
-    // Check if name already exists
-    if (state.customThemes[trimmedName]) {
-      alert('A theme with this name already exists');
-      return;
-    }
-    
-    // Rename the theme
-    state.customThemes[trimmedName] = state.customThemes[selectedTheme];
-    delete state.customThemes[selectedTheme];
-    
-    // Update dropdown
-    const option = Array.from(themeSelect.options).find(opt => opt.value === selectedTheme);
-    if (option) {
-      option.value = trimmedName;
-      option.textContent = `${trimmedName} - Custom Theme`;
-    }
-    
-    // Update current selection
-    themeSelect.value = trimmedName;
-    state.colorTheme = trimmedName;
-    
-    saveToFirebase();
-    alert(`Theme renamed to ${trimmedName}!`);
-  }
-  
-  // Load theme colors into styling center for editing
+  // Load theme colors into styling center for editing (no rename prompt)
   loadThemeIntoStylingCenter(selectedTheme);
 }
 
@@ -5663,13 +5633,6 @@ function renderProgress() {
   // Build condensed dashboard
   const dash = `
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 20px;">
-      <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px;">
-        <div style="display:flex; justify-content: space-between; align-items:center;">
-          <div style="color: var(--muted);">Week</div>
-          <div style="font-weight:600;">Day ${dayOfWeek + 1} of 7</div>
-        </div>
-        <div style="display:flex; gap:8px; margin-top:8px;" id="progressWeekDots"></div>
-      </div>
       <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align:center;">
         <div style="font-size: 32px;">🔥</div>
         <div style="font-size: 28px; font-weight: 700;" id="progressStreakCount">${state.streaks.current || 0}</div>
