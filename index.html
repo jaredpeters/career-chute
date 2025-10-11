@@ -2964,12 +2964,12 @@ function updateStylingRow(rowId) {
       currentColorIndicator.style.background = currentColor;
       currentColorIndicator.style.color = getContrastColor(currentColor);
       currentColorIndicator.textContent = '';
-      currentColorIndicator.title = currentColor;
+      currentColorIndicator.title = `${element}: ${currentColor}`;
     } else {
       currentColorIndicator.style.background = 'var(--bg)';
       currentColorIndicator.style.color = 'var(--muted)';
       currentColorIndicator.textContent = 'Current';
-      currentColorIndicator.title = '';
+      currentColorIndicator.title = `${element}: No color set`;
     }
     
     // Highlight the current color in the palette if it matches
@@ -2989,7 +2989,7 @@ function updateStylingRow(rowId) {
     currentColorIndicator.style.background = 'var(--bg)';
     currentColorIndicator.style.color = 'var(--muted)';
     currentColorIndicator.textContent = 'Current';
-    currentColorIndicator.title = '';
+    currentColorIndicator.title = 'Select an element to see current color';
     
     // Clear all highlights
     const allSwatches = row.querySelectorAll('div[onclick*="selectColor"]');
@@ -3051,7 +3051,7 @@ function selectColor(rowId, color) {
   currentColorIndicator.style.background = color;
   currentColorIndicator.style.color = getContrastColor(color);
   currentColorIndicator.textContent = '';
-  currentColorIndicator.title = color;
+  currentColorIndicator.title = `${element}: ${color}`;
   
   // Store the selection for theme saving
   if (!state.customColors) state.customColors = {};
