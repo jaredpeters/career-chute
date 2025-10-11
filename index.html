@@ -2252,9 +2252,9 @@ let userId = SHARED_USER_ID;
 localStorage.setItem('career_chute_user_id', userId);
 
 // App Version
-const APP_VERSION = '3.6.0'; // Horizontal color groups with | dividers
+const APP_VERSION = '3.5.10'; // Horizontal color flow with vertical dividers
 const APP_BUILD_DATE = '2025-01-08';
-const APP_DEPLOY_TIME = '2025-01-08 22:30:00';
+const APP_DEPLOY_TIME = '2025-01-08 22:20:00';
 
 // State
 let state = {
@@ -2839,23 +2839,20 @@ function addStylingRow() {
   
   const row = document.createElement('div');
   row.id = rowId;
-  row.style.cssText = 'margin-bottom: 16px;';
+  row.style.cssText = 'margin-bottom: 8px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;';
   
-  // Create element selector
-  const elementSelector = `
-    <div style="margin-bottom: 8px;">
-      <select onchange="updateStylingRow('${rowId}')" style="width: 100%; height: 32px; font-size: 12px;">
-        <option value="">Select Element</option>
-        ${colorElements.map(el => `<option value="${el.value}">${el.label}</option>`).join('')}
-      </select>
-    </div>
-  `;
-  
-  // Create grouped color palette
-  const colorPalette = `
-    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-      ${colorGroups.map((group, groupIndex) => `
-        <div style="display: flex; gap: 1px; align-items: center;">
+  // Create compact horizontal layout with element selector and color palette side by side
+  const rowContent = `
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="min-width: 120px;">
+        <select onchange="updateStylingRow('${rowId}')" style="width: 100%; height: 28px; font-size: 11px;">
+          <option value="">Select Element</option>
+          ${colorElements.map(el => `<option value="${el.value}">${el.label}</option>`).join('')}
+        </select>
+      </div>
+      
+      <div style="flex: 1; display: flex; gap: 1px; flex-wrap: wrap; align-items: center;">
+        ${colorGroups.map((group, groupIndex) => `
           ${group.colors.map(color => `
             <div onclick="selectColor('${rowId}', '${color}')" 
                  style="width: 16px; height: 16px; background-color: ${color}; border: 1px solid transparent; cursor: pointer; transition: all 0.2s ease;"
@@ -2863,20 +2860,17 @@ function addStylingRow() {
                  onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'"
                  title="${color}"></div>
           `).join('')}
-          ${groupIndex < colorGroups.length - 1 ? '<div style="color: var(--muted); font-size: 12px; margin: 0 4px;">|</div>' : ''}
-        </div>
-      `).join('')}
+          ${groupIndex < colorGroups.length - 1 ? '<div style="width: 8px; height: 16px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;">|</div>' : ''}
+        `).join('')}
+      </div>
+      
+      <div style="min-width: 60px; text-align: right;">
+        <button onclick="removeStylingRow('${rowId}')" class="modern-button secondary" style="height: 24px; padding: 0 8px; font-size: 11px;">×</button>
+      </div>
     </div>
   `;
   
-  // Create remove button
-  const removeButton = `
-    <div style="text-align: right; margin-top: 8px;">
-      <button onclick="removeStylingRow('${rowId}')" class="modern-button secondary" style="height: 24px; padding: 0 8px; font-size: 11px;">× Remove</button>
-    </div>
-  `;
-  
-  row.innerHTML = elementSelector + colorPalette + removeButton;
+  row.innerHTML = rowContent;
   container.appendChild(row);
 }
 
