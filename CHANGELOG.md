@@ -4,6 +4,35 @@ All notable changes to Career Chute will be documented in this file.
 
 ---
 
+## [3.6.0] - 2025-01-15
+
+### 🎨 MAJOR FEATURE: Enhanced Theme Editing System
+- **Visual Color Indicators**: Shows current active colors for each styling row
+- **Theme Editing**: Complete rename and edit functionality for custom themes
+- **Export/Import System**: Full theme sharing and backup capabilities
+- **6 New Design Tokens**: Added shadows, gradients, and success-glow customization
+- **Smart UI Controls**: Edit/Delete buttons only appear for custom themes
+- **Compact Layout**: Improved horizontal styling center design
+- **Update Functionality**: Edit existing themes with dedicated "Update Theme" button
+- **Custom Naming**: User-defined theme names instead of auto-generated codes
+- **Conflict Resolution**: Smart handling of duplicate theme names during import
+
+### 🔧 Technical Details
+- **Theme Management**: Complete CRUD operations for custom themes
+- **Visual Feedback**: Real-time color indicators and palette highlighting
+- **File Operations**: JSON export/import with validation and error handling
+- **UI State Management**: Smart button visibility based on theme type
+- **Design Token Expansion**: 22 total customizable elements (was 16)
+
+### 💡 Workflow Enhancements
+- **Create**: Custom theme names with validation
+- **Edit**: Load themes into Styling Center for modification
+- **Rename**: Change theme names anytime
+- **Update**: Save changes to existing themes
+- **Delete**: Remove themes with confirmation
+- **Export**: Share themes with others or backup
+- **Import**: Load themes from files with conflict resolution
+
 ## [3.4.3] - 2025-01-08
 
 ### 🛠️ FIXED: CSV Import Workflow
