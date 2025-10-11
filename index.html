@@ -3022,8 +3022,17 @@ function selectColor(rowId, color) {
 }
 
 function saveAsTheme() {
-  if (!state.customColors || Object.keys(state.customColors).length === 0) {
-    alert('Please customize some colors first before saving as theme');
+  // Get ALL current color values from the DOM (what's actually being used)
+  const allCurrentColors = {};
+  colorElements.forEach(element => {
+    const currentValue = getComputedStyle(document.documentElement).getPropertyValue(element.value).trim();
+    if (currentValue) {
+      allCurrentColors[element.value] = currentValue;
+    }
+  });
+  
+  if (Object.keys(allCurrentColors).length === 0) {
+    alert('No colors found to save as theme');
     return;
   }
   
@@ -3042,9 +3051,9 @@ function saveAsTheme() {
     }
   }
   
-  // Save the theme
+  // Save the theme with ALL current colors
   if (!state.customThemes) state.customThemes = {};
-  state.customThemes[trimmedName] = { ...state.customColors };
+  state.customThemes[trimmedName] = { ...allCurrentColors };
   saveToFirebase();
   
   // Add to dropdown
@@ -3065,7 +3074,7 @@ function saveAsTheme() {
   state.colorTheme = trimmedName;
   changeColorTheme();
   
-  alert(`Theme saved as "${trimmedName}"!`);
+  alert(`Theme saved as "${trimmedName}" with ${Object.keys(allCurrentColors).length} color settings!`);
 }
 
 function updateCurrentTheme() {
@@ -3077,19 +3086,28 @@ function updateCurrentTheme() {
     return;
   }
   
-  if (!state.customColors || Object.keys(state.customColors).length === 0) {
-    alert('Please customize some colors first');
+  // Get ALL current color values from the DOM (what's actually being used)
+  const allCurrentColors = {};
+  colorElements.forEach(element => {
+    const currentValue = getComputedStyle(document.documentElement).getPropertyValue(element.value).trim();
+    if (currentValue) {
+      allCurrentColors[element.value] = currentValue;
+    }
+  });
+  
+  if (Object.keys(allCurrentColors).length === 0) {
+    alert('No colors found to save');
     return;
   }
   
-  // Update the theme
-  state.customThemes[selectedTheme] = { ...state.customColors };
+  // Update the theme with ALL current colors
+  state.customThemes[selectedTheme] = { ...allCurrentColors };
   saveToFirebase();
   
   // Apply the updated theme
   changeColorTheme();
   
-  alert(`Theme "${selectedTheme}" updated!`);
+  alert(`Theme "${selectedTheme}" updated with ${Object.keys(allCurrentColors).length} color settings!`);
 }
 
 function exportThemes() {
@@ -3268,32 +3286,43 @@ function loadThemeIntoStylingCenter(themeName) {
   // Clear current custom colors
   state.customColors = {};
   
-  // Load theme colors into styling center
-  const themeColors = state.customThemes[themeName];
-  Object.entries(themeColors).forEach(([element, color]) => {
-    // Create a new styling row
-    addStylingRow();
-    
-    // Get the last added row
-    const rows = container.children;
-    const lastRow = rows[rows.length - 1];
-    
-    // Set the element
-    const select = lastRow.querySelector('select');
-    select.value = element;
-    
-    // Update the row to show current color
-    updateStylingRow(lastRow.id);
-    
-    // Apply the color
-    selectColor(lastRow.id, color);
+  // Get all current color values from the DOM (what's actually being used)
+  const allCurrentColors = {};
+  colorElements.forEach(element => {
+    const currentValue = getComputedStyle(document.documentElement).getPropertyValue(element.value).trim();
+    if (currentValue) {
+      allCurrentColors[element.value] = currentValue;
+    }
+  });
+  
+  // Create styling rows for ALL color elements that have values
+  colorElements.forEach(element => {
+    const currentValue = allCurrentColors[element.value];
+    if (currentValue) {
+      // Create a new styling row
+      addStylingRow();
+      
+      // Get the last added row
+      const rows = container.children;
+      const lastRow = rows[rows.length - 1];
+      
+      // Set the element
+      const select = lastRow.querySelector('select');
+      select.value = element.value;
+      
+      // Update the row to show current color
+      updateStylingRow(lastRow.id);
+      
+      // Apply the current color (this will also update state.customColors)
+      selectColor(lastRow.id, currentValue);
+    }
   });
   
   // Show the Update Theme button
   const updateBtn = document.getElementById('updateThemeBtn');
   updateBtn.style.display = 'block';
   
-  alert(`Theme "${themeName}" loaded into Styling Center for editing!`);
+  alert(`Theme "${themeName}" loaded into Styling Center for editing! All ${Object.keys(allCurrentColors).length} color settings are now visible.`);
 }
 
 function removeStylingRow(rowId) {
